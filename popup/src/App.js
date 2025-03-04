@@ -1,12 +1,12 @@
 import React from 'react';
+import LoginComponent from './components/loginComponent'; // Assuming LoginComponent is in the same directory
 
-    function App() {
-      return (
-        <div>
-          <h1>React Popup Test</h1>
-          <p>This is a React component in the popup.</p>
-        </div>
-      );
-    }
+function App() {
+  return (
+    <div>
+      <LoginComponent />
+    </div>
+  );
+}
 
-    export default App;
+export default App;

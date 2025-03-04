@@ -20,5 +20,8 @@
     ],
     "host_permissions": [
       "https://mail.google.com/*"
-    ]
+    ],
+    "content_security_policy": {
+    "extension_pages": "script-src 'self' http://localhost:3000; object-src 'self'"
+  }
   }
