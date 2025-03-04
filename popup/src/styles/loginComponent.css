@@ -9,38 +9,39 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
     background-color: #f5a2a1;
-
-}
-
-.container {
-    width: 100%;
-    max-width: 600px;
-    padding: 20px;
+    min-height: 100vh; 
 }
 
 .login-card {
     background-color: #ffcccb;
-    padding: 30px 40px;
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
+    justify-content: center;
     align-items: center;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    width: 250px;
+    height: 110px;
+    /* border: 2px solid; */
+    padding: 20px; 
 }
 
 .brand {
+    margin-bottom: 10px;
     font-size: 28px;
     font-weight: bold;
     color: #333;
-    margin-right: 40px;
+    /* border: 2px solid; */
+    text-align: center;
+    width: 225px;
 }
 
 .login-btn {
+    margin-top: 7px;
     background-color: #a9d6ff;
     border: 1px solid #333;
     border-radius: 10px;
-    padding: 10px 40px;
+    padding: 10px;
     font-size: 16px;
     color: #333;
     cursor: pointer;
@@ -51,7 +52,6 @@ body {
     background-color: #87c5ff;
 }
 
-
 .hidden {
     display: none;
 }
@@ -61,6 +61,7 @@ body {
     position: relative;
     width: 40px;
     height: 20px;
+    margin-right: 10px; 
 }
 
 .toggle-switch input {
@@ -105,34 +106,34 @@ input:checked + .slider:before {
 #settings-icon {
     width: 24px;
     height: 24px;
-    margin-left: 15px;
     cursor: pointer;
 }
 
+#logged-in-options {
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Center items horizontally */
+    margin-top: 10px; /* Add margin for spacing */
+}
 
 /* Responsive styles */
 @media (max-width: 768px) {
-    .container {
-        padding: 15px;
-    }
-    
     .login-card {
         padding: 25px 30px;
     }
     
     .brand {
-        margin-right: 30px;
+        width: 200px;
     }
 }
 
 @media (max-width: 480px) {
     .brand {
         font-size: 22px;
-        margin-right: 20px;
+        width: 180px;
     }
     
     .login-btn {
-        padding: 8px 25px;
         font-size: 14px;
     }
     
@@ -140,4 +141,3 @@ input:checked + .slider:before {
         padding: 20px 25px;
     }
 }
-
