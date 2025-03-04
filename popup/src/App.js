@@ -1,5 +1,5 @@
 import React from 'react';
-import LoginComponent from './components/loginComponent'; // Assuming LoginComponent is in the same directory
+import LoginComponent from './components/loginComponent'; 
 
 function App() {
   return (
