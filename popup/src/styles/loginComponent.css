@@ -141,3 +141,8 @@ input:checked + .slider:before {
       padding: 20px 25px;
   }
 }
+
+#settings-icon{
+  height: 32;
+  width: 32;
+}

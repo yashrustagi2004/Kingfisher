@@ -1,3 +1,4 @@
+// src/components/loginComponent.js
 /* global chrome */
 
 import React, { useState } from "react";
@@ -45,7 +46,7 @@ function LoginComponent() {
   };
 
   const handleSettingsClick = () => {
-    window.location.href = "http://localhost:3000";
+    chrome.tabs.create({ url: "settings.html" }); // Open settings.html in a new tab
   };
 
   return (
@@ -64,7 +65,7 @@ function LoginComponent() {
               <span className="slider"></span>
             </label>
             <img
-              src="../assets/settings.png"
+              src="setting.png"
               id="settings-icon"
               alt="Settings"
               onClick={handleSettingsClick}
