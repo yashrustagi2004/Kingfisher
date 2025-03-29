@@ -6,10 +6,14 @@ const authRoutes = require("./routes/auth");
 require("dotenv").config();
 
 const app = express();
-const PORT = 5000;
+const PORT = 4000;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST"],
+  allowedHeaders: ["Content-Type"],
+}));
 app.use(express.json());
 
 // MongoDB Connection

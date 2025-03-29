@@ -27,7 +27,7 @@ function LoginComponent() {
             console.log("User Info:", userInfo);
 
             // ✅ Send to backend
-            await fetch("http://localhost:5000/auth/google/userinfo", {
+            await fetch("http://localhost:4000/auth/google/userinfo", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
