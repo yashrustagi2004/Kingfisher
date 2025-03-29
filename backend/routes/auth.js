@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const User = require("../models/User");
+const User = require("../models/user");
 
 // Google user info route
 router.post("/google/userinfo", async (req, res) => {
