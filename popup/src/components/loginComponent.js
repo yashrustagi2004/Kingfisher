@@ -64,7 +64,7 @@ function LoginComponent() {
               <span className="slider"></span>
             </label>
             <img
-              src="../assets/settings.png"
+              src="setting.png"
               id="settings-icon"
               alt="Settings"
               onClick={handleSettingsClick}
