@@ -2,29 +2,31 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Email Dashboard</title>
   <link rel="stylesheet" href="./css/styles.css" />
 </head>
 <body>
   <div class="container">
     <div class="sidebar">
-      <div class="nav-item" data-route="trusted-domains">Trusted domains</div>
+      <div class="nav-item active" data-route="trusted-domains">Trusted domains</div>
       <div class="nav-item" data-route="analysis">Analysis</div>
       <div class="nav-item" data-route="malicious-domains">Malicious domains</div>
       <div class="nav-item" data-route="tips">Tips</div>
       <div class="nav-item" data-route="about-us">About us</div>
       <div class="nav-item delete-account" data-route="delete-account">Delete Account</div>
     </div>
+    
     <div class="content">
       <div class="header">
         <h1 id="content-title">Scanned Emails</h1>
       </div>
-      <div id="content-body" class="emails-container">
-        <!-- Content will be dynamically loaded here -->
+      <div class="emails-container" id="content-body">
+        <!-- Dynamic content will be injected here -->
       </div>
     </div>
   </div>
+
   <script src="./js/script.js"></script>
 </body>
 </html>

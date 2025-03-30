@@ -43,15 +43,27 @@ router.get("/tips", (req, res) => {
   return res.json({ tips });
 });
 
-// Delete Account
-router.delete("/delete-account/:userId", async (req, res) => {
-  const { userId } = req.params;
-  try {
-    await User.findByIdAndDelete(userId);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
+// Delete Account by Google ID
+router.delete('/delete-account/:googleId', async (req, res) => {
+    try {
+      const googleId = req.params.googleId;
+  
+      if (!googleId) {
+        return res.status(400).json({ success: false, message: 'Google ID is missing' });
+      }
+  
+      const deleted = await User.findOneAndDelete({ googleId });
+  
+      if (!deleted) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
+  
+      res.json({ success: true, message: 'Account deleted successfully' });
+    } catch (err) {
+      console.error('❌ Error deleting account:', err);
+      res.status(500).json({ success: false, message: 'Server error' });
+    }
+  });
+    
 
 module.exports = router;
