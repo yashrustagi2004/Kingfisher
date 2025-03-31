@@ -2,8 +2,6 @@ const express = require("express");
 const router = express.Router();
 const settingsController = require("../controllers/settingsController");
 
-// Home Route
-router.get("/home", settingsController.getHomeData);
 
 // Trusted Domains Routes
 router.get("/trusted-domains", settingsController.getTrustedDomains);

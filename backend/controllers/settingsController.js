@@ -1,14 +1,5 @@
 const User = require("../models/user");
 
-exports.getHomeData = async (req, res) => {
-  const homeData = {
-    message: "Welcome to the Email Security Dashboard!",
-    totalUsers: 500, // Replace with actual DB count
-    totalScannedEmails: 10001, // Replace with actual DB data
-  };
-  res.json(homeData);
-};
-
 exports.getTrustedDomains = async (req, res) => {
   return res.json({ domains: ["gmail.com", "outlook.com"] });
 };
