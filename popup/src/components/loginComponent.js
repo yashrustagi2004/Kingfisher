@@ -1,4 +1,3 @@
-// src/components/loginComponent.js
 /* global chrome */
 
 import React, { useState } from "react";
@@ -27,6 +26,11 @@ function LoginComponent() {
             const userInfo = await res.json();
             console.log("User Info:", userInfo);
 
+            // ✅ Store token and userId locally
+            chrome.storage.local.set({ token, userId: userInfo.sub }, () => {
+              console.log("Token saved to storage");
+            });
+
             // ✅ Send to backend
             await fetch("http://localhost:4000/auth/google/userinfo", {
               method: "POST",
@@ -46,7 +50,7 @@ function LoginComponent() {
   };
 
   const handleSettingsClick = () => {
-    chrome.tabs.create({ url: "settings.html" }); // Open settings.html in a new tab
+    chrome.tabs.create({ url: "settings.html" });
   };
 
   return (
