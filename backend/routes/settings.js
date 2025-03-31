@@ -1,69 +1,24 @@
 const express = require("express");
 const router = express.Router();
-const User = require("../models/user");
+const settingsController = require("../controllers/settingsController");
 
-// Get Trusted Domains (Static or from DB)
-router.get("/trusted-domains", async (req, res) => {
-    // Example hardcoded
-    return res.json({ domains: ["gmail.com", "outlook.com"] });
-  });
-  
+// Home Route
+router.get("/home", settingsController.getHomeData);
 
-// Add Trusted Domain
-router.post("/trusted-domains", async (req, res) => {
-  const { domain } = req.body;
-  console.log("Add domain:", domain);
-  // Save to DB if needed
-  res.json({ success: true });
-});
+// Trusted Domains Routes
+router.get("/trusted-domains", settingsController.getTrustedDomains);
+router.post("/trusted-domains", settingsController.addTrustedDomain);
 
-// Get Analysis (Placeholder)
-router.get("/analysis", (req, res) => {
-  const data = {
-    totalEmailsScanned: 123,
-    suspiciousEmails: 12,
-    trustedEmails: 111,
-  };
-  return res.json(data);
-});
+// Analysis Route
+router.get("/analysis", settingsController.getAnalysis);
 
-// Get Malicious Domains
-router.get("/malicious-domains", (req, res) => {
-  const malicious = ["phishy.com", "scamlink.net"];
-  return res.json({ malicious });
-});
+// Malicious Domains Route
+router.get("/malicious-domains", settingsController.getMaliciousDomains);
 
-// Get Tips
-router.get("/tips", (req, res) => {
-  const tips = [
-    "Never click on suspicious links.",
-    "Verify sender email addresses.",
-    "Use two-factor authentication.",
-  ];
-  return res.json({ tips });
-});
+// Tips Route
+router.get("/tips", settingsController.getTips);
 
-// Delete Account by Google ID
-router.delete('/delete-account/:googleId', async (req, res) => {
-    try {
-      const googleId = req.params.googleId;
-  
-      if (!googleId) {
-        return res.status(400).json({ success: false, message: 'Google ID is missing' });
-      }
-  
-      const deleted = await User.findOneAndDelete({ googleId });
-  
-      if (!deleted) {
-        return res.status(404).json({ success: false, message: 'User not found' });
-      }
-  
-      res.json({ success: true, message: 'Account deleted successfully' });
-    } catch (err) {
-      console.error('❌ Error deleting account:', err);
-      res.status(500).json({ success: false, message: 'Server error' });
-    }
-  });
-    
+// Delete Account Route
+router.delete("/delete-account/:googleId", settingsController.deleteAccount);
 
 module.exports = router;

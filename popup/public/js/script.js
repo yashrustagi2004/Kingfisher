@@ -33,9 +33,25 @@ document.addEventListener('DOMContentLoaded', function () {
 
   const routes = {
 
-    home: () => {
+    home: async () => {
       contentTitle.innerText = 'Home';
-      contentBody.innerHTML = '<p>Welcome to the Email Security Dashboard.</p>';
+      contentBody.innerHTML = '<p>Loading...</p>';
+      try {
+        const token = await getToken();
+        const response = await fetch('http://localhost:4000/settings/home', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const data = await response.json();
+        contentBody.innerHTML = `
+          <p>${data.message}</p>
+          <p><strong>Total Users:</strong> ${data.totalUsers}</p>
+          <p><strong>Total Emails Scanned:</strong> ${data.totalScannedEmails}</p>
+        `;
+      } catch (error) {
+        contentBody.innerHTML = `<p>Error loading home data: ${error.message}</p>`;
+      }
     },
 
     'trusted-domains': async () => {
