@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const User = require("../models/User");
+const User = require("../models/user");
 
 // Get Trusted Domains (Static or from DB)
 router.get("/trusted-domains", async (req, res) => {

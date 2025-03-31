@@ -17,8 +17,7 @@
   "permissions": [
     "identity",
     "storage",
-    "scripting",
-    "tabs"
+    "scripting"
   ],
   "host_permissions": [
     "https://www.googleapis.com/*",
