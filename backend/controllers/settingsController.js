@@ -1,13 +1,51 @@
 const User = require("../models/user");
+const TrustedDomains = require("../models/trusted")
 
 exports.getTrustedDomains = async (req, res) => {
-  return res.json({ domains: ["gmail.com", "outlook.com"] });
+  try {
+    const trustedData = await TrustedDomains.findAll();
+    if (!trustedData || !trustedData.domains) {
+      return res.status(404).json({ message: "No trusted domains found" });
+    }
+    res.status(200).json({ trustedDomains: trustedData.domains });
+  } catch (error) {
+    console.error("Error fetching trusted domains:", error);
+    res.status(500).json({ message: "Server error" });
+  }
 };
 
 exports.addTrustedDomain = async (req, res) => {
-  const { domain } = req.body;
-  console.log("Add domain:", domain);
-  res.json({ success: true });
+  try {
+    const { domain } = req.body;
+    console.log("Add domain:", domain);
+
+    if (!domain) {
+      return res.status(400).json({ success: false, message: "Domain is required" });
+    }
+
+    // Find the trusted domains document (assuming a single document stores the array)
+    let trustedData = await TrustedDomains.findOne();
+
+    if (!trustedData) {
+      // If no document exists, create a new one
+      trustedData = new TrustedDomains({ domains: [domain] });
+    } else {
+      // Add the domain if it doesn’t already exist
+      if (!trustedData.domains.includes(domain)) {
+        trustedData.domains.push(domain);
+      } else {
+        return res.status(400).json({ success: false, message: "Domain already exists" });
+      }
+    }
+
+    // Save the updated document
+    await trustedData.save();
+
+    res.status(201).json({ success: true, message: "Domain added successfully", domains: trustedData.domains });
+  } catch (error) {
+    console.error("Error adding trusted domain:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
 };
 
 exports.getAnalysis = (req, res) => {
