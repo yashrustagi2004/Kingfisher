@@ -11,7 +11,7 @@ Phishing emails are cybersecurity threats that can trick users into revealing se
 3. Understanding the sentiment of the email body using NLP and alerting the user for any suspicious email.
 
 # Product Functionality 
-1. -Real-time phishing email detection
+1. Real-time phishing email detection
 2. Multilingual Support
 3. User Privacy
 4. Mail Analysis
@@ -63,7 +63,7 @@ Reporting & Awareness: Reported emails are stored for further investigation, and
 •	Yash Rustagi 
 •	Arjav Jhamb  
 •	Aditya Chawla 
-•   Ishika Sahu
+• Ishika Sahu
 
 
 
