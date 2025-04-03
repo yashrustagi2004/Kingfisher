@@ -33,6 +33,14 @@ exports.getTips = (req, res) => {
   return res.json({ tips });
 };
 
+exports.getAboutUs = (req, res) => {
+  const about = [
+    "We are kingfisher.",
+    "We do anti fishing"
+  ];
+  return res.json({ about })
+};
+
 exports.deleteAccount = async (req, res) => {
   try {
     const googleId = req.params.googleId;

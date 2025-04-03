@@ -152,7 +152,20 @@ document.addEventListener("DOMContentLoaded", function () {
         contentBody.innerHTML = `<p>Error loading tips: ${error.message}</p>`;
       }
     },
-
+    "about-us": async () => {
+      contentTitle.innerText = "About Us";
+      contentBody.innerHTML = "<p>Loading...</p>";
+      try {
+        const response = await fetch("http://localhost:4000/settings/about-us");
+        const data = await response.json();
+        const about = data.about || [];
+        contentBody.innerHTML = `<ul>${about
+          .map((ab) => `<li>${ab}</li>`)
+          .join("")}</ul>`;
+      } catch (error) {
+        contentBody.innerHTML = `<p>Error loading tips: ${error.message}</p>`;
+      }
+    },
     "delete-account": async () => {
       if (
         confirm(
