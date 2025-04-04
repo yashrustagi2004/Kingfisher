@@ -235,7 +235,6 @@ document.addEventListener("DOMContentLoaded", function () {
         contentBody.innerHTML = `<p>Error loading tips: ${error.message}</p>`;
       }
     },
-
     "about-us": async () => {
       contentTitle.innerText = "About Us";
       contentBody.innerHTML = "<p>Loading...</p>";
