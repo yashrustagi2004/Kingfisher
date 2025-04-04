@@ -86,24 +86,107 @@ document.addEventListener("DOMContentLoaded", function () {
 
     "trusted-domains": async () => {
       contentTitle.innerText = "Trusted Domains";
-      contentBody.innerHTML = "<p>Loading...</p>";
-      try {
-        const token = await getToken();
-        const response = await fetch(
-          "http://localhost:4000/settings/trusted-domains",
-          {
-            headers: { Authorization: `Bearer ${token}` },
+      contentBody.innerHTML = `
+        <div class="input-container">
+          <input type="text" id="domain-input" placeholder="Enter the domain" />
+          <button id="insert-domain-btn">Insert</button>
+        </div>
+        <div id="domains-list">
+          <p>Loading trusted domains...</p>
+        </div>
+      `;
+
+      document.getElementById("insert-domain-btn").addEventListener("click", async () => {
+        const domainInput = document.getElementById("domain-input");
+        const domain = domainInput.value.trim();
+
+        if (!domain) {
+          alert("Please enter a domain");
+          return;
+        }
+
+        try {
+          const { userId } = await getTokenAndUserId();
+          const response = await fetch("http://localhost:4000/settings/trusted-domains", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": userId,
+            },
+            body: JSON.stringify({ domain })
+          });
+
+          const data = await response.json();
+
+          if (response.ok && data.success) {
+            domainInput.value = "";
+            loadTrustedDomains();
+          } else {
+            alert(`Failed to add domain: ${data.message || "Unknown error"}`);
           }
-        );
-        const data = await response.json();
-        const domains = data.domains || [];
-        contentBody.innerHTML = `<ul>${domains
-          .map((domain) => `<li>${domain}</li>`)
-          .join("")}</ul>`;
-      } catch (error) {
-        contentBody.innerHTML = `<p>Error loading trusted domains: ${error.message}</p>`;
+        } catch (error) {
+          alert(`Error adding domain: ${error.message}`);
+        }
+  });
+  
+  // Function to load trusted domains
+  const loadTrustedDomains = async () => {
+    const domainsList = document.getElementById("domains-list");
+    try {
+      const { userId } = await getTokenAndUserId();
+      const response = await fetch("http://localhost:4000/settings/trusted-domains", {
+        headers: { Authorization: userId },
+      });
+      const data = await response.json();
+      const domains = data.domains || [];
+
+      if (domains.length > 0) {
+        domainsList.innerHTML = `
+          <ul class="domains-list">
+            ${domains.map(domain => `
+              <li class="domain-item">
+                ${domain}
+                <button class="remove-domain-btn" data-domain="${domain}">Remove</button>
+              </li>`).join("")}
+          </ul>
+        `;
+
+        document.querySelectorAll(".remove-domain-btn").forEach(btn => {
+          btn.addEventListener("click", async (e) => {
+            const domainToRemove = e.target.getAttribute("data-domain");
+            try {
+              const { userId } = await getTokenAndUserId();
+              const baseURL = "http://localhost:4000/settings";
+              const deleteURL = `${baseURL}/${encodeURIComponent(domainToRemove)}`;
+              const response = await fetch(deleteURL, {
+                method: "DELETE",
+                headers: {
+                  "Authorization": userId,
+                }
+              });
+              const data = await response.json();
+
+              if (response.ok && data.success) {
+                loadTrustedDomains();
+              } else {
+                alert(`Failed to remove domain: ${data.message || "Unknown error"}`);
+              }
+            } catch (error) {
+              alert(`Error removing domain: ${error.message}`);
+            }
+          });
+        });
+      } else {
+        domainsList.innerHTML = "<p>No trusted domains found.</p>";
       }
-    },
+    } catch (error) {
+      domainsList.innerHTML = `<p>Error loading trusted domains: ${error.message}</p>`;
+    }
+  };
+
+  loadTrustedDomains();
+},
+
 
     analysis: async () => {
       contentTitle.innerText = "Analysis";
@@ -153,6 +236,20 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     },
 
+    "about-us": async () => {
+      contentTitle.innerText = "About Us";
+      contentBody.innerHTML = "<p>Loading...</p>";
+      try {
+        const response = await fetch("http://localhost:4000/settings/about-us");
+        const data = await response.json();
+        const about = data.about || [];
+        contentBody.innerHTML = `<ul>${about
+          .map((ab) => `<li>${ab}</li>`)
+          .join("")}</ul>`;
+      } catch (error) {
+        contentBody.innerHTML = `<p>Error loading tips: ${error.message}</p>`;
+      }
+    },
     "delete-account": async () => {
       if (
         confirm(

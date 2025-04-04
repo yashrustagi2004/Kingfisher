@@ -3,48 +3,93 @@ const TrustedDomains = require("../models/trusted")
 
 exports.getTrustedDomains = async (req, res) => {
   try {
-    const trustedData = await TrustedDomains.findAll();
-    if (!trustedData || !trustedData.domains) {
-      return res.status(404).json({ message: "No trusted domains found" });
+    const googleId = req.headers.authorization;
+
+    if (!googleId) {
+      return res.status(400).json({
+        success: false,
+        message: "No Google ID provided.",
+      });
     }
-    res.status(200).json({ trustedDomains: trustedData.domains });
+
+    const trustedDomains = await TrustedDomains.findOne({ googleId: googleId });
+
+    if (trustedDomains) {
+      res.status(200).json({ success: true, domains: trustedDomains.Domains || [] });
+    } else {
+      res.status(200).json({ success: true, domains: [] });
+    }
   } catch (error) {
-    console.error("Error fetching trusted domains:", error);
-    res.status(500).json({ message: "Server error" });
+    console.error("Error getting trusted domains:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve trusted domains.",
+      error: error.message,
+    });
   }
 };
 
 exports.addTrustedDomain = async (req, res) => {
   try {
+    const googleId = req.headers.authorization;
     const { domain } = req.body;
-    console.log("Add domain:", domain);
 
-    if (!domain) {
-      return res.status(400).json({ success: false, message: "Domain is required" });
+    if (!googleId) {
+      return res.status(400).json({
+        success: false,
+        message: "No Google ID provided.",
+      });
     }
 
-    // Find the trusted domains document (assuming a single document stores the array)
-    let trustedData = await TrustedDomains.findOne();
+    let trustedDomains = await TrustedDomains.findOne({ googleId: googleId });
 
-    if (!trustedData) {
-      // If no document exists, create a new one
-      trustedData = new TrustedDomains({ domains: [domain] });
+    if (!trustedDomains) {
+      trustedDomains = new TrustedDomains({ googleId: googleId, Domains: [domain] });
+    } else if (!trustedDomains.Domains.includes(domain)) {
+      trustedDomains.Domains.push(domain);
     } else {
-      // Add the domain if it doesn’t already exist
-      if (!trustedData.domains.includes(domain)) {
-        trustedData.domains.push(domain);
-      } else {
-        return res.status(400).json({ success: false, message: "Domain already exists" });
-      }
+      return res.status(400).json({ success: false, message: "Domain already exists." });
     }
 
-    // Save the updated document
-    await trustedData.save();
+    await trustedDomains.save();
 
-    res.status(201).json({ success: true, message: "Domain added successfully", domains: trustedData.domains });
+    res.status(201).json({ success: true, message: "Domain added successfully." });
   } catch (error) {
     console.error("Error adding trusted domain:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({
+      success: false,
+      message: "Failed to add trusted domain.",
+      error: error.message,
+    });
+  }
+};
+
+exports.removeTrustedDomain = async (req, res) => {
+  try {
+    const googleId = req.headers.authorization;
+    const domainToRemove = req.params.domain;
+
+    console.log("Attempting to remove domain:", domainToRemove, "for user:", googleId);
+
+    const result = await TrustedDomains.findOneAndUpdate(
+      { googleId: googleId },
+      { $pull: { Domains: domainToRemove } }
+    );
+
+    if (result) {
+      console.log("Domain removal attempted for user:", googleId);
+      res.status(200).json({ success: true, message: "Domain removed successfully." });
+    } else {
+      console.log("User domains not found for googleId:", googleId);
+      return res.status(404).json({ success: false, message: "User domains not found." });
+    }
+  } catch (error) {
+    console.error("Error removing trusted domain:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to remove domain.",
+      error: error.message,
+    });
   }
 };
 
@@ -71,6 +116,14 @@ exports.getTips = (req, res) => {
   return res.json({ tips });
 };
 
+exports.getAboutUs = (req, res) => {
+  const about = [
+    "We are kingfisher.",
+    "We do anti fishing"
+  ];
+  return res.json({ about })
+};
+
 exports.deleteAccount = async (req, res) => {
   try {
     const googleId = req.params.googleId;
@@ -79,12 +132,14 @@ exports.deleteAccount = async (req, res) => {
       return res.status(400).json({ success: false, message: "Google ID is missing" });
     }
 
-    const deleted = await User.findOneAndDelete({ googleId });
-
-    if (!deleted) {
+    const Udeleted = await User.findOneAndDelete({ googleId });
+    const TDdeleted= await TrustedDomains.findOneAndDelete({ googleId });
+    if (!Udeleted) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
-
+    if (!TDdeleted) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
     res.json({ success: true, message: "Account deleted successfully" });
   } catch (err) {
     console.error("❌ Error deleting account:", err);

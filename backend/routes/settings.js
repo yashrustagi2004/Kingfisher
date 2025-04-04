@@ -6,6 +6,7 @@ const settingsController = require("../controllers/settingsController");
 // Trusted Domains Routes
 router.get("/trusted-domains", settingsController.getTrustedDomains);
 router.post("/trusted-domains", settingsController.addTrustedDomain);
+router.delete("/:domain", settingsController.removeTrustedDomain);
 
 // Analysis Route
 router.get("/analysis", settingsController.getAnalysis);
