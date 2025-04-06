@@ -15,29 +15,115 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  const getToken = () => {
-    return new Promise((resolve, reject) => {
-      chrome.storage.local.get(["token"], (result) => {
-        if (result.token) {
-          resolve(result.token);
-        } else {
-          reject(new Error("Token not found."));
-        }
+  function setupEmailPopupListeners() {
+    const modal = document.getElementById('emailModal');
+    const closeBtn = document.getElementById('closeModalBtn');
+    const emailItems = document.querySelectorAll('.email-item');
+    
+    // Add click event to each email item
+    emailItems.forEach(item => {
+      item.addEventListener('click', function() {
+        const index = this.getAttribute('data-index');
+        showEmailDetails(index);
       });
     });
-  };
+    
+    // Close modal when clicking the X button
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function() {
+        modal.style.display = 'none';
+      });
+    }
+    
+    // Close modal when clicking outside the content
+    window.addEventListener('click', function(event) {
+      if (event.target === modal) {
+        modal.style.display = 'none';
+      }
+    });
+  }
+  
+  // Function to show email details in modal
+  function showEmailDetails(index) {
+    // Make sure we have the email data
+    if (!window.emailData || !window.emailData[index]) return;
+    
+    const email = window.emailData[index];
+    const modal = document.getElementById('emailModal');
+    const modalContent = document.getElementById('modalContent');
+    
+    // Update modal content
+    document.getElementById('modalTitle').textContent = email.subject;
+    
+    modalContent.innerHTML = `
+      <div class="email-meta"><strong>From:</strong> ${email.from}</div>
+      <div class="email-meta"><strong>Date:</strong> ${email.date}</div>
+      <div class="email-meta"><strong>Subject:</strong> ${email.subject}</div>
+      
+      <div style="margin: 15px 0; padding: 10px; background-color: #f9f9f9; border-left: 4px solid #ccc;">
+        ${email.snippet}
+      </div>
+      
+      <div class="security-details">
+        <h4>Security Analysis</h4>
+        <div style="margin-bottom: 10px;">
+          <strong>Overall Status: </strong>
+          <span style="color: ${email.securityStatus === 'safe' ? '#4CAF50' : '#F44336'}; font-weight: bold;">
+            ${email.securityStatus === 'safe' ? 'SAFE' : 'SUSPICIOUS'}
+          </span>
+        </div>
+        
+        <div class="security-item">
+          <strong>SPF (Sender Policy Framework): </strong>
+          <span class="${email.securityDetails.spf.pass ? 'security-pass' : 'security-fail'}">
+            ${email.securityDetails.spf.pass ? 'PASS' : 'FAIL'} 
+            (${email.securityDetails.spf.details || 'Unknown'})
+          </span>
+          <div style="font-size: 12px; margin-top: 3px; color: #666;">
+            Verifies that the sender's email server is authorized to send email from that domain.
+          </div>
+        </div>
+        
+        <div class="security-item">
+          <strong>DKIM (DomainKeys Identified Mail): </strong>
+          <span class="${email.securityDetails.dkim.pass ? 'security-pass' : 'security-fail'}">
+            ${email.securityDetails.dkim.pass ? 'PASS' : 'FAIL'}
+            (${email.securityDetails.dkim.details || 'Unknown'})
+          </span>
+          <div style="font-size: 12px; margin-top: 3px; color: #666;">
+            Ensures the email content hasn't been tampered with during transit.
+          </div>
+        </div>
+        
+        <div class="security-item">
+          <strong>DMARC (Domain-based Message Authentication): </strong>
+          <span class="${email.securityDetails.dmarc.pass ? 'security-pass' : 'security-fail'}">
+            ${email.securityDetails.dmarc.pass ? 'PASS' : 'FAIL'}
+            (${email.securityDetails.dmarc.details || 'Unknown'})
+          </span>
+          <div style="font-size: 12px; margin-top: 3px; color: #666;">
+            Provides instructions for how to handle emails that fail SPF or DKIM checks.
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Show the modal
+    modal.style.display = 'block';
+  }
 
   const navItems = document.querySelectorAll(".nav-item");
   const contentTitle = document.getElementById("content-title");
   const contentBody = document.getElementById("content-body");
 
+
   const routes = {
     home: async () => {
       contentTitle.innerText = "Gmail Emails";
       contentBody.innerHTML = "<p>Loading your latest Gmail messages...</p>";
-
+      
       try {
-        const token = await getToken();
+        const { token, userId } = await getTokenAndUserId();
 
         const response = await fetch(
           "http://localhost:4000/api/gmail/extract",
@@ -46,31 +132,136 @@ document.addEventListener("DOMContentLoaded", function () {
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ token }),
+            body: JSON.stringify({ token: token, googleId: userId }),
           }
         );
-
+        
         const data = await response.json();
-
+        
         if (response.ok && data.success) {
           const emails = data.emails;
-
+          
           if (emails.length > 0) {
+            // Add CSS for the email list and popup
             contentBody.innerHTML = `
-          <ul>
-            ${emails
-              .map(
-                (email) => `
-              <li>
-                <strong>From:</strong> ${email.from}<br>
-                <strong>Subject:</strong> ${email.subject}<br>
-                <strong>Date:</strong> ${email.date}<br>
-                <em>${email.snippet}</em>
-              </li>`
-              )
-              .join("")}
-          </ul>
-        `;
+              <style>
+                .email-list {
+                  list-style-type: none;
+                  padding: 0;
+                }
+                .email-item {
+                  border: 1px solid #ddd;
+                  border-radius: 8px;
+                  margin-bottom: 10px;
+                  padding: 15px;
+                  cursor: pointer;
+                  transition: background-color 0.2s;
+                }
+                .email-item:hover {
+                  background-color: #f5f5f5;
+                }
+                .safe-tag {
+                  background-color: #4CAF50;
+                  color: white;
+                  padding: 3px 8px;
+                  border-radius: 4px;
+                  font-size: 12px;
+                  margin-left: 10px;
+                }
+                .malicious-tag {
+                  background-color: #F44336;
+                  color: white;
+                  padding: 3px 8px;
+                  border-radius: 4px;
+                  font-size: 12px;
+                  margin-left: 10px;
+                }
+                .email-meta {
+                  margin-bottom: 8px;
+                }
+                
+                /* Modal/Popup Styles */
+                .modal {
+                  display: none;
+                  position: fixed;
+                  z-index: 1000;
+                  left: 0;
+                  top: 0;
+                  width: 100%;
+                  height: 100%;
+                  background-color: rgba(0,0,0,0.4);
+                  overflow: auto;
+                }
+                .modal-content {
+                  background-color: #fefefe;
+                  margin: 10% auto;
+                  padding: 20px;
+                  border: 1px solid #888;
+                  border-radius: 8px;
+                  width: 80%;
+                  max-width: 600px;
+                  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                }
+                .close-button {
+                  color: #aaa;
+                  float: right;
+                  font-size: 28px;
+                  font-weight: bold;
+                  cursor: pointer;
+                }
+                .close-button:hover {
+                  color: black;
+                }
+                .security-details {
+                  margin-top: 15px;
+                  padding: 10px;
+                  background-color: #f8f8f8;
+                  border-radius: 4px;
+                }
+                .security-item {
+                  margin: 8px 0;
+                  padding: 5px;
+                  border-radius: 4px;
+                }
+                .security-pass {
+                  color: #4CAF50;
+                }
+                .security-fail {
+                  color: #F44336;
+                }
+              </style>
+              
+              <!-- Modal/Popup container -->
+              <div id="emailModal" class="modal">
+                <div class="modal-content">
+                  <span class="close-button" id="closeModalBtn">&times;</span>
+                  <h3 id="modalTitle">Email Details</h3>
+                  <div id="modalContent"></div>
+                </div>
+              </div>
+              
+              <ul class="email-list" id="emailListContainer">
+                ${emails
+                  .map((email, index) => `
+                  <li class="email-item" data-index="${index}">
+                    <div class="email-meta">
+                      <strong>From:</strong> ${email.from}
+                      <span class="${email.securityStatus === 'safe' ? 'safe-tag' : 'malicious-tag'}">
+                        ${email.securityStatus === 'safe' ? 'SAFE' : 'SUSPICIOUS'}
+                      </span>
+                    </div>
+                    <div class="email-meta"><strong>Subject:</strong> ${email.subject}</div>
+                    <div class="email-meta"><strong>Date:</strong> ${email.date}</div>
+                  </li>`)
+                  .join("")}
+              </ul>
+            `;
+            
+            // Store email data in a variable accessible to our event handlers
+            window.emailData = emails;
+            
+            // Add event listeners after DOM elements are created
+            setupEmailPopupListeners();
           } else {
             contentBody.innerHTML = "<p>No emails found.</p>";
           }
