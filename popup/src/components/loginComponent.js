@@ -1,10 +1,22 @@
 /* global chrome */
-
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import "../styles/loginComponent.css";
 
 function LoginComponent() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isEnabled, setIsEnabled] = useState(true);
+
+  useEffect(() => {
+    // Check token and toggle state on load
+    chrome.storage.local.get(["token", "userId", "enabled"], (result) => {
+      if (result.token && result.userId) {
+        setIsLoggedIn(true);
+      }
+      if (result.enabled !== undefined) {
+        setIsEnabled(result.enabled);
+      }
+    });
+  }, []);
 
   const handleLoginClick = () => {
     if (chrome?.identity?.getAuthToken) {
@@ -16,31 +28,31 @@ function LoginComponent() {
           setIsLoggedIn(true);
 
           try {
-            // ✅ Fetch user info
             const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
+              headers: { Authorization: `Bearer ${token}` },
             });
 
             const userInfo = await res.json();
             console.log("User Info:", userInfo);
 
-            // ✅ Store token and userId locally
-            chrome.storage.local.set({ token, userId: userInfo.sub }, () => {
-              console.log("Token saved to storage");
-            });
+            chrome.storage.local.set(
+              {
+                token,
+                userId: userInfo.sub,
+                enabled: true, // default toggle to ON
+              },
+              () => {
+                console.log("User data saved to storage");
+              }
+            );
 
-            // ✅ Send to backend
             await fetch("http://localhost:4000/auth/google/userinfo", {
               method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
+              headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ ...userInfo, token }),
             });
           } catch (err) {
-            console.error("Failed to fetch or send user info:", err);
+            console.error("Failed to fetch/send user info:", err);
           }
         }
       });
@@ -50,7 +62,17 @@ function LoginComponent() {
   };
 
   const handleSettingsClick = () => {
+    if (!isEnabled) return; // Block if extension is off
     chrome.tabs.create({ url: "settings.html" });
+  };
+  
+
+  const handleToggleChange = (e) => {
+    const newState = e.target.checked;
+    setIsEnabled(newState);
+    chrome.storage.local.set({ enabled: newState }, () => {
+      console.log("Extension toggled:", newState);
+    });
   };
 
   return (
@@ -65,15 +87,23 @@ function LoginComponent() {
         ) : (
           <div id="logged-in-options">
             <label className="toggle-switch">
-              <input type="checkbox" id="toggle-btn" />
+              <input
+                type="checkbox"
+                id="toggle-btn"
+                checked={isEnabled}
+                onChange={handleToggleChange}
+              />
               <span className="slider"></span>
             </label>
             <img
-              src="setting.png"
-              id="settings-icon"
-              alt="Settings"
-              onClick={handleSettingsClick}
-            />
+  src="setting.png"
+  id="settings-icon"
+  alt="Settings"
+  onClick={handleSettingsClick}
+  style={{ cursor: isEnabled ? "pointer" : "not-allowed", opacity: isEnabled ? 1 : 0.5 }}
+  title={isEnabled ? "Settings" : "Disabled while extension is OFF"}
+/>
+
           </div>
         )}
       </div>

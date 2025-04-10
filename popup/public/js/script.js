@@ -442,36 +442,42 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     },
     "delete-account": async () => {
-      if (
-        confirm(
-          "Are you sure you want to delete your account? This action cannot be undone."
-        )
-      ) {
-        try {
-          const { token, userId } = await getTokenAndUserId();
-          const response = await fetch(
-            `http://localhost:4000/settings/delete-account/${userId}`,
-            {
-              method: "DELETE",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-          const data = await response.json();
-          if (response.ok && data.success) {
-            alert("Account successfully deleted.");
-            window.close();
-          } else {
-            alert(`Failed to delete account: ${data.message}`);
-          }
-        } catch (err) {
-          alert("Error deleting account: " + err.message);
-          console.error(err);
+  if (
+    confirm(
+      "Are you sure you want to delete your account? This action cannot be undone."
+    )
+  ) {
+    try {
+      const { token, userId } = await getTokenAndUserId();
+
+      const response = await fetch(
+        `http://localhost:4000/settings/delete-account/${userId}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
         }
+      );
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // ✅ Clear local storage after deletion
+        chrome.storage.local.clear(() => {
+          alert("Account successfully deleted.");
+          window.close(); // ✅ Close the tab/window after deletion
+        });
+      } else {
+        alert(`Failed to delete account: ${data.message}`);
       }
-    },
+    } catch (err) {
+      alert("Error deleting account: " + err.message);
+      console.error(err);
+    }
+  }
+},
   };
 
   navItems.forEach((item) => {

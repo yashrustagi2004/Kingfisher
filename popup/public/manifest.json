@@ -26,7 +26,13 @@
   ],
   "oauth2": {
     "client_id": "373556498608-3827t6a19jgqvvr1p022akbo946cr4c6.apps.googleusercontent.com",
-    "scopes": ["openid", "email", "profile"]
+    "scopes": [
+    "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "openid",
+    "email",
+    "profile"
+  ]
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self' http://localhost:3000; object-src 'self'"
