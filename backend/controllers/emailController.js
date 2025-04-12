@@ -14,7 +14,7 @@ exports.getGmailEmails = async (req, res) => {
   }
 
   if (!googleId) {
-    return res.status(400).json({error: "no google id provided"})
+    return res.status(400).json({ error: "No Google ID provided" });
   }
 
   try {
@@ -24,61 +24,66 @@ exports.getGmailEmails = async (req, res) => {
 
     const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
-    // Get user's trusted domains
-    const trustedDomainsDoc = await TrustedDomains.findOne({ googleId });
+    // Parallel API calls for better performance
+    const [messagesRes, trustedDomainsDoc] = await Promise.all([
+      gmail.users.messages.list({
+        userId: "me",
+        maxResults: 30, // Fetch more since we'll filter some out
+        q: "category:primary", // Filter to only include primary inbox
+      }),
+      TrustedDomains.findOne({ googleId })
+    ]);
+
     const trustedDomains = trustedDomainsDoc?.Domains || [];
-
-    // Fetch latest emails from primary inbox category only
-    const messagesRes = await gmail.users.messages.list({
-      userId: "me",
-      maxResults: 20, // Fetch more since we'll filter some out
-      q: "category:primary", // Filter to only include primary inbox
-    });
-
     const messages = messagesRes.data.messages || [];
+    
+    if (messages.length === 0) {
+      return res.json({
+        success: true,
+        emails: [],
+      });
+    }
+
+    // Batch request emails in parallel instead of serial fetches
+    const batchRequests = messages.slice(0, 20).map(message => 
+      gmail.users.messages.get({
+        userId: "me",
+        id: message.id,
+        format: "metadata", // Only get headers, not full message content
+        metadataHeaders: ["From", "Subject", "Date", "Authentication-Results", 
+                          "ARC-Authentication-Results", "DKIM-Signature", 
+                          "X-Google-DKIM-Signature", "Received-SPF"]
+      })
+    );
+
+    const emailResponses = await Promise.all(batchRequests);
+    
+    // Process all fetched emails
     let processedEmails = [];
     let processedCount = 0;
 
-    // Process messages until we have 10 or run out of messages
-    for (const message of messages) {
+    for (const response of emailResponses) {
       if (processedCount >= 10) break;
 
-      const msg = await gmail.users.messages.get({
-        userId: "me",
-        id: message.id,
-        format: "full", // Get full message details including headers
-      });
-
-      const headers = msg.data.payload.headers;
+      const msg = response.data;
+      const headers = msg.payload.headers;
       const from = headers.find((h) => h.name === "From")?.value || "";
       
-      // Extract domain from sender email
-      const domainMatch = from.match(/@([^>]+)/) || from.match(/@(.+)$/);
-      const senderDomain = domainMatch ? domainMatch[1].toLowerCase().trim() : null;
-
-      // console.log(googleId)
-      // console.log("TrustedDomainsDoc:", trustedDomainsDoc);
-      // console.log(trustedDomains)
-      // console.log(domainMatch)
+      // Extract domain from sender email - optimized regex
+      const domainMatch = from.match(/@([^>\s]+)/);
+      const senderDomain = domainMatch ? domainMatch[1].toLowerCase() : null;
 
       // Skip if sender domain is in trusted domains list
       if (senderDomain && trustedDomains.includes(senderDomain)) {
         continue;
       }
 
-      // Get authentication results directly from headers
-      const authResultsHeader = headers.find(h => 
-        h.name === "Authentication-Results" || 
-        h.name === "X-Google-DKIM-Signature" || 
-        h.name === "ARC-Authentication-Results"
-      );
-      
-      // Parse security results more accurately
-      const securityStatus = parseAuthenticationHeaders(headers);
+      // Parse security results with improved performance
+      const securityStatus = parseAuthenticationHeadersOptimized(headers);
       
       const subject = headers.find((h) => h.name === "Subject")?.value || "(No Subject)";
       const date = headers.find((h) => h.name === "Date")?.value;
-      const snippet = msg.data.snippet;
+      const snippet = msg.snippet || "";
 
       processedEmails.push({
         subject,
@@ -103,11 +108,11 @@ exports.getGmailEmails = async (req, res) => {
 };
 
 /**
- * Parse email authentication headers more accurately
+ * Optimized parser for email authentication headers
  * @param {Array} headers - Email headers
  * @returns {Object} Security status information
  */
-function parseAuthenticationHeaders(headers) {
+function parseAuthenticationHeadersOptimized(headers) {
   // Initialize results
   const results = {
     spf: { pass: false, details: null },
@@ -116,69 +121,84 @@ function parseAuthenticationHeaders(headers) {
   };
   
   // Find Authentication-Results header
-  const authResultsHeader = headers.find(h => 
-    h.name === "Authentication-Results" || 
-    h.name === "ARC-Authentication-Results"
-  );
+  let authValue = '';
   
-  if (authResultsHeader) {
-    const authValue = authResultsHeader.value;
-    
-    // Check SPF
-    if (authValue.includes("spf=pass")) {
+  // Create a map for faster header lookup instead of multiple finds
+  const headerMap = {};
+  for (const header of headers) {
+    headerMap[header.name.toLowerCase()] = header.value;
+  }
+  
+  // Check auth results
+  authValue = headerMap['authentication-results'] || headerMap['arc-authentication-results'] || '';
+  
+  // Fast checks with single-pass string searches
+  if (authValue) {
+    // SPF check
+    if (authValue.includes('spf=pass')) {
       results.spf.pass = true;
-      results.spf.details = "pass";
-    } else if (authValue.match(/spf=(fail|neutral|softfail)/i)) {
-      results.spf.pass = false;
-      results.spf.details = authValue.match(/spf=(fail|neutral|softfail)/i)[1];
+      results.spf.details = 'pass';
+    } else if (authValue.includes('spf=fail')) {
+      results.spf.details = 'fail';
+    } else if (authValue.includes('spf=neutral')) {
+      results.spf.details = 'neutral';
+    } else if (authValue.includes('spf=softfail')) {
+      results.spf.details = 'softfail';
     }
     
-    // Check DKIM
-    if (authValue.includes("dkim=pass")) {
+    // DKIM check
+    if (authValue.includes('dkim=pass')) {
       results.dkim.pass = true;
-      results.dkim.details = "pass";
-    } else if (authValue.match(/dkim=(fail|neutral|none)/i)) {
-      results.dkim.pass = false;
-      results.dkim.details = authValue.match(/dkim=(fail|neutral|none)/i)[1];
+      results.dkim.details = 'pass';
+    } else if (authValue.includes('dkim=fail')) {
+      results.dkim.details = 'fail';
+    } else if (authValue.includes('dkim=neutral')) {
+      results.dkim.details = 'neutral';
+    } else if (authValue.includes('dkim=none')) {
+      results.dkim.details = 'none';
     }
     
-    // Check DMARC
-    if (authValue.includes("dmarc=pass")) {
+    // DMARC check
+    if (authValue.includes('dmarc=pass')) {
       results.dmarc.pass = true;
-      results.dmarc.details = "pass";
-    } else if (authValue.match(/dmarc=(fail|none)/i)) {
-      results.dmarc.pass = false;
-      results.dmarc.details = authValue.match(/dmarc=(fail|none)/i)[1];
+      results.dmarc.details = 'pass';
+    } else if (authValue.includes('dmarc=fail')) {
+      results.dmarc.details = 'fail';
+    } else if (authValue.includes('dmarc=none')) {
+      results.dmarc.details = 'none';
     }
   }
   
-  // Check additional DKIM headers if needed
-  const dkimHeader = headers.find(h => h.name === "DKIM-Signature" || h.name === "X-Google-DKIM-Signature");
-  if (dkimHeader && !results.dkim.pass) {
-    results.dkim.pass = true; // If header exists, likely passed
-    results.dkim.details = "pass";
+  // Single checks for other auth headers
+  if (!results.dkim.details && (headerMap['dkim-signature'] || headerMap['x-google-dkim-signature'])) {
+    results.dkim.pass = true;
+    results.dkim.details = 'pass';
   }
   
-  // If we found specific values for SPF/DKIM/DMARC in headers, we'll use those
-  // Otherwise, for Gmail, assume defaults are safe
+  // Check Received-SPF header if SPF still unknown
+  if (!results.spf.details && headerMap['received-spf'] && headerMap['received-spf'].includes('pass')) {
+    results.spf.pass = true;
+    results.spf.details = 'pass';
+  }
+  
+  // Set defaults if not found
   if (!results.spf.details) {
     results.spf.pass = true;
-    results.spf.details = "pass (assumed)"; 
+    results.spf.details = 'pass (assumed)';
   }
   
   if (!results.dkim.details) {
     results.dkim.pass = true;
-    results.dkim.details = "pass (assumed)";
+    results.dkim.details = 'pass (assumed)';
   }
   
   if (!results.dmarc.details) {
     results.dmarc.pass = true;
-    results.dmarc.details = "pass (assumed)";
+    results.dmarc.details = 'pass (assumed)';
   }
   
-  // Determine overall status
-  const allPassed = results.spf.pass && results.dkim.pass && results.dmarc.pass;
-  const overallStatus = allPassed ? "safe" : "malicious";
+  // Final security determination
+  const overallStatus = (results.spf.pass && results.dkim.pass && results.dmarc.pass) ? 'safe' : 'malicious';
   
   return {
     status: overallStatus,
