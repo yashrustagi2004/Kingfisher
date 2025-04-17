@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const authRoutes = require("./routes/auth");
 const settingsRoutes = require("./routes/settings");
 const emailRoutes = require("./routes/email");
+const translateRoute = require("./routes/translate");
 require("dotenv").config();
 
 const app = express();
@@ -43,6 +44,7 @@ mongoose
 app.use("/auth", authRoutes);
 app.use("/settings", settingsRoutes);
 app.use("/api", emailRoutes);
+app.use("/api", translateRoute);
 
 // ✅ Server start
 app.listen(PORT, () => {

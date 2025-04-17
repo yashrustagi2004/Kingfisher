@@ -26,38 +26,76 @@ function LoginComponent() {
         } else {
           console.log("Access token:", token);
           setIsLoggedIn(true);
-
+  
           try {
             const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
               headers: { Authorization: `Bearer ${token}` },
             });
-
+  
             const userInfo = await res.json();
             console.log("User Info:", userInfo);
-
+  
             chrome.storage.local.set(
               {
                 token,
                 userId: userInfo.sub,
-                enabled: true, // default toggle to ON
+                enabled: true,
               },
               () => {
                 console.log("User data saved to storage");
               }
             );
-
+  
             await fetch("http://localhost:4000/auth/google/userinfo", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ ...userInfo, token }),
             });
+  
+            // 📨 FETCH EMAILS AFTER LOGIN
+            const emailRes = await fetch("http://localhost:4000/api/gmail/extract", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ token: token, googleId: userInfo.sub }),
+            });
+  
+            const emailData = await emailRes.json();
+  
+            if (!emailRes.ok || !emailData.success) {
+              console.error("Failed to fetch emails:", emailData.error);
+              return;
+            }
+  
+            const emails = emailData.emails;
+  
+            for (let email of emails) {
+              const response = await fetch("http://localhost:4000/api/translate", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  subject: email.subject,
+                  content: email.snippet,
+                }),
+              });
+            
+              const data = await response.json();
+            
+              // Send translated data back to server to log in terminal
+              await fetch("http://localhost:4000/api/translate/log", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+              });
+            }
           } catch (err) {
             console.error("Failed to fetch/send user info:", err);
           }
         }
       });
-    } else {
-      console.warn("chrome.identity is not available.");
     }
   };
 

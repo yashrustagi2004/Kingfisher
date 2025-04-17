@@ -1,5 +1,7 @@
 const { google } = require("googleapis");
 const TrustedDomains = require("../models/trusted"); // Adjust path as needed
+// const axios = require("axios");
+// const TRANSLATION_URL = "https://new-falcons-chew.loca.lt/translate";
 
 /**
  * Extract and process Gmail emails with security checks
@@ -185,3 +187,34 @@ function parseAuthenticationHeaders(headers) {
     details: results
   };
 }
+
+
+// exports.gettranslateText = async (req, res) => {
+//   const { emails } = req.body;
+
+//   if (!emails || !Array.isArray(emails)) {
+//     return res.status(400).json({ error: "Invalid email data" });
+//   }
+
+//   try {
+//     for (let email of emails) {
+//       const { snippet } = email;
+
+//       const response = await axios.post("https://new-falcons-chew.loca.lt/translate", {
+//         text: snippet,
+//         src_lang: "auto", // Let the Colab endpoint auto-detect the language
+//       });
+
+//       const translated = response.data.translated;
+
+//       console.log("📩 Original:", snippet);
+//       console.log("✅ Translated:", translated);
+//       console.log("----------------------------");
+//     }
+
+//     res.json({ message: "Translated emails printed to console" });
+//   } catch (error) {
+//     console.error("Translation Error:", error.message);
+//     res.status(500).json({ error: "Translation failed" });
+//   }
+// };

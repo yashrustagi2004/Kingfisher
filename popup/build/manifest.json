@@ -14,12 +14,7 @@
   "background": {
     "service_worker": "background.js"
   },
-  "permissions": [
-    "identity",
-    "storage",
-    "scripting",
-    "tabs"
-  ],
+  "permissions": ["identity", "storage", "scripting", "tabs"],
   "host_permissions": [
     "https://www.googleapis.com/*",
     "https://mail.google.com/*"
@@ -27,12 +22,11 @@
   "oauth2": {
     "client_id": "373556498608-3827t6a19jgqvvr1p022akbo946cr4c6.apps.googleusercontent.com",
     "scopes": [
-    "https://www.googleapis.com/auth/gmail.readonly",
-    "https://www.googleapis.com/auth/userinfo.email",
-    "openid",
-    "email",
-    "profile"
-  ]
+      "openid",
+      "email",
+      "profile",
+      "https://www.googleapis.com/auth/gmail.readonly"
+    ]
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self' http://localhost:3000; object-src 'self'"

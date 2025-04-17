@@ -121,10 +121,8 @@ document.addEventListener("DOMContentLoaded", function () {
     home: async () => {
       contentTitle.innerText = "Gmail Emails";
       contentBody.innerHTML = "<p>Loading your latest Gmail messages...</p>";
-      
       try {
         const { token, userId } = await getTokenAndUserId();
-
         const response = await fetch(
           "http://localhost:4000/api/gmail/extract",
           {
@@ -135,12 +133,10 @@ document.addEventListener("DOMContentLoaded", function () {
             body: JSON.stringify({ token: token, googleId: userId }),
           }
         );
-        
         const data = await response.json();
         
         if (response.ok && data.success) {
           const emails = data.emails;
-          
           if (emails.length > 0) {
             // Add CSS for the email list and popup
             contentBody.innerHTML = `
@@ -179,7 +175,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 .email-meta {
                   margin-bottom: 8px;
                 }
-                
                 /* Modal/Popup Styles */
                 .modal {
                   display: none;
@@ -256,23 +251,30 @@ document.addEventListener("DOMContentLoaded", function () {
                   .join("")}
               </ul>
             `;
-            
             // Store email data in a variable accessible to our event handlers
             window.emailData = emails;
-            
             // Add event listeners after DOM elements are created
             setupEmailPopupListeners();
           } else {
             contentBody.innerHTML = "<p>No emails found.</p>";
           }
+          // await fetch("http://localhost:4000/api/translate", {
+          //   method: "POST",
+          //   headers: {
+          //     "Content-Type": "application/json",
+          //   },
+          //   body: JSON.stringify({ emails }),
+          // });
         } else {
           contentBody.innerHTML = `<p>Error: ${
             data.error || "Unable to fetch emails."
           }</p>`;
         }
+        
       } catch (error) {
         contentBody.innerHTML = `<p>Error loading emails: ${error.message}</p>`;
       }
+
     },
 
     "trusted-domains": async () => {
