@@ -81,14 +81,18 @@ function LoginComponent() {
                   content: email.snippet,
                 }),
               });
-            
+
               const data = await response.json();
-            
-              // Send translated data back to server to log in terminal
+
+              // Send structured data for logging
               await fetch("http://localhost:4000/api/translate/log", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data),
+                body: JSON.stringify({
+                  emailSubject: email.subject,
+                  emailContentEnglish: data.content, // Explicitly label as English content
+                  originalLanguage: data.originalLang,
+                }),
               });
             }
           } catch (err) {
