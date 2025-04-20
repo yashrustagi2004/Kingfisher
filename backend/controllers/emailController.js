@@ -1,5 +1,8 @@
 const { google } = require("googleapis");
 const TrustedDomains = require("../models/trusted"); // Adjust path as needed
+const fs = require('fs');
+const csv = require('csv-parser');
+const path = require('path');
 
 /**
  * Extract and process Gmail emails with security checks
@@ -49,10 +52,7 @@ exports.getGmailEmails = async (req, res) => {
       gmail.users.messages.get({
         userId: "me",
         id: message.id,
-        format: "metadata", // Only get headers, not full message content
-        metadataHeaders: ["From", "Subject", "Date", "Authentication-Results", 
-                          "ARC-Authentication-Results", "DKIM-Signature", 
-                          "X-Google-DKIM-Signature", "Received-SPF"]
+        format: "full", // Get full message content to extract URLs
       })
     );
 
@@ -84,6 +84,9 @@ exports.getGmailEmails = async (req, res) => {
       const subject = headers.find((h) => h.name === "Subject")?.value || "(No Subject)";
       const date = headers.find((h) => h.name === "Date")?.value;
       const snippet = msg.snippet || "";
+      
+      // Extract URLs from email content
+      const urls = extractUrlsFromEmail(msg);
 
       processedEmails.push({
         subject,
@@ -91,15 +94,20 @@ exports.getGmailEmails = async (req, res) => {
         date,
         snippet,
         securityStatus: securityStatus.status,
-        securityDetails: securityStatus.details
+        securityDetails: securityStatus.details,
+        urls // Add extracted URLs to the processed email object
       });
       
       processedCount++;
+      console.log("processed emails:", processedCount);
     }
+
+    // Check URLs against malicious URL database
+    const checkedEmails = await checkUrlsAgainstDatabase(processedEmails);
 
     res.json({
       success: true,
-      emails: processedEmails,
+      emails: checkedEmails,
     });
   } catch (err) {
     console.error("Error processing emails:", err);
@@ -204,4 +212,120 @@ function parseAuthenticationHeadersOptimized(headers) {
     status: overallStatus,
     details: results
   };
+}
+
+/**
+ * Extract URLs from email content
+ * @param {Object} email - Email message object from Gmail API
+ * @returns {Array} Array of URLs found in the email
+ */
+function extractUrlsFromEmail(email) {
+  const extractedUrls = [];
+  
+  // Function to recursively process email parts
+  function processEmailPart(part) {
+    if (part.mimeType === 'text/plain' || part.mimeType === 'text/html') {
+      // Decode base64 content
+      let content = '';
+      if (part.body.data) {
+        content = Buffer.from(part.body.data, 'base64').toString('utf8');
+      }
+      
+      // Extract URLs using regex
+      const urlRegex = /(https?:\/\/[^\s<>"']+)/g;
+      const urlMatches = content.match(urlRegex) || [];
+      
+      urlMatches.forEach(url => {
+        if (!extractedUrls.includes(url)) {
+          extractedUrls.push(url);
+        }
+      });
+    }
+    
+    // Process nested parts if they exist
+    if (part.parts && Array.isArray(part.parts)) {
+      part.parts.forEach(subPart => processEmailPart(subPart));
+    }
+  }
+  
+  // Start processing from email payload
+  if (email.payload) {
+    processEmailPart(email.payload);
+  }
+  
+  return extractedUrls;
+}
+
+/**
+ * Check URLs against malicious URL database
+ * @param {Array} emails - Array of processed email objects
+ * @returns {Array} Updated email objects with malicious URL check result
+ */
+async function checkUrlsAgainstDatabase(emails) {
+  // Load CSV database of malicious URLs
+  const maliciousUrls = await loadMaliciousUrlDatabase();
+  
+  // Check each email's URLs against the database
+  return emails.map(email => {
+    // Only check URLs if headers were determined to be safe
+    if (email.securityStatus === 'safe' && email.urls && email.urls.length > 0) {
+      // Check if any URL is in the malicious database
+      const foundMaliciousUrl = email.urls.find(url => {
+        return maliciousUrls.some(entry => {
+          // Check if URL contains the malicious URL pattern
+          return url.includes(entry.url) && 
+                 (entry.type === 'phishing' || entry.type === 'defacement' || entry.type === 'malware');
+        });
+      });
+      
+      // If malicious URL found, update security status
+      if (foundMaliciousUrl) {
+        return {
+          ...email,
+          securityStatus: 'malicious',
+          securityDetails: {
+            ...email.securityDetails,
+            urlCheck: {
+              pass: false,
+              details: 'Malicious URL detected'
+            }
+          }
+        };
+      }
+    }
+    
+    // If no malicious URLs found, add URL check result but keep original status
+    return {
+      ...email,
+      securityDetails: {
+        ...email.securityDetails,
+        urlCheck: {
+          pass: true,
+          details: 'No malicious URLs detected'
+        }
+      }
+    };
+  });
+}
+
+/**
+ * Load malicious URL database from CSV file
+ * @returns {Array} Array of objects with url and type properties
+ */
+function loadMaliciousUrlDatabase() {
+  return new Promise((resolve, reject) => {
+    const results = [];
+    const csvFilePath = path.join(__dirname, '../data/malicious_phish.csv');
+    
+    fs.createReadStream(csvFilePath)
+      .pipe(csv())
+      .on('data', (data) => results.push(data))
+      .on('end', () => {
+        resolve(results);
+      })
+      .on('error', (error) => {
+        console.error('Error reading malicious URL database:', error);
+        resolve([]); // Resolve with empty array to continue processing
+      });
+  });
 }

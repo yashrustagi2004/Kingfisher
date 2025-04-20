@@ -15,101 +15,183 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  // function setupEmailPopupListeners() {
+  //   const modal = document.getElementById('emailModal');
+  //   const closeBtn = document.getElementById('closeModalBtn');
+  //   const emailItems = document.querySelectorAll('.email-item');
+    
+  //   // Add click event to each email item
+  //   emailItems.forEach(item => {
+  //     item.addEventListener('click', function() {
+  //       const index = this.getAttribute('data-index');
+  //       showEmailDetails(index);
+  //     });
+  //   });
+    
+  //   // Close modal when clicking the X button
+  //   if (closeBtn) {
+  //     closeBtn.addEventListener('click', function() {
+  //       modal.style.display = 'none';
+  //     });
+  //   }
+    
+  //   // Close modal when clicking outside the content
+  //   window.addEventListener('click', function(event) {
+  //     if (event.target === modal) {
+  //       modal.style.display = 'none';
+  //     }
+  //   });
+  // }
+  
+  // Function to show email details in modal
+  // function showEmailDetails(index) {
+  //   // Make sure we have the email data
+  //   if (!window.emailData || !window.emailData[index]) return;
+    
+  //   const email = window.emailData[index];
+  //   const modal = document.getElementById('emailModal');
+  //   const modalContent = document.getElementById('modalContent');
+    
+  //   // Update modal content
+  //   document.getElementById('modalTitle').textContent = email.subject;
+    
+  //   modalContent.innerHTML = `
+  //     <div class="email-meta"><strong>From:</strong> ${email.from}</div>
+  //     <div class="email-meta"><strong>Date:</strong> ${email.date}</div>
+  //     <div class="email-meta"><strong>Subject:</strong> ${email.subject}</div>
+      
+  //     <div style="margin: 15px 0; padding: 10px; background-color: #f9f9f9; border-left: 4px solid #ccc;">
+  //       ${email.snippet}
+  //     </div>
+      
+  //     <div class="security-details">
+  //       <h4>Security Analysis</h4>
+  //       <div style="margin-bottom: 10px;">
+  //         <strong>Overall Status: </strong>
+  //         <span style="color: ${email.securityStatus === 'safe' ? '#4CAF50' : '#F44336'}; font-weight: bold;">
+  //           ${email.securityStatus === 'safe' ? 'SAFE' : 'SUSPICIOUS'}
+  //         </span>
+  //       </div>
+        
+  //       <div class="security-item">
+  //         <strong>SPF (Sender Policy Framework): </strong>
+  //         <span class="${email.securityDetails.spf.pass ? 'security-pass' : 'security-fail'}">
+  //           ${email.securityDetails.spf.pass ? 'PASS' : 'FAIL'} 
+  //           (${email.securityDetails.spf.details || 'Unknown'})
+  //         </span>
+  //         <div style="font-size: 12px; margin-top: 3px; color: #666;">
+  //           Verifies that the sender's email server is authorized to send email from that domain.
+  //         </div>
+  //       </div>
+        
+  //       <div class="security-item">
+  //         <strong>DKIM (DomainKeys Identified Mail): </strong>
+  //         <span class="${email.securityDetails.dkim.pass ? 'security-pass' : 'security-fail'}">
+  //           ${email.securityDetails.dkim.pass ? 'PASS' : 'FAIL'}
+  //           (${email.securityDetails.dkim.details || 'Unknown'})
+  //         </span>
+  //         <div style="font-size: 12px; margin-top: 3px; color: #666;">
+  //           Ensures the email content hasn't been tampered with during transit.
+  //         </div>
+  //       </div>
+        
+  //       <div class="security-item">
+  //         <strong>DMARC (Domain-based Message Authentication): </strong>
+  //         <span class="${email.securityDetails.dmarc.pass ? 'security-pass' : 'security-fail'}">
+  //           ${email.securityDetails.dmarc.pass ? 'PASS' : 'FAIL'}
+  //           (${email.securityDetails.dmarc.details || 'Unknown'})
+  //         </span>
+  //         <div style="font-size: 12px; margin-top: 3px; color: #666;">
+  //           Provides instructions for how to handle emails that fail SPF or DKIM checks.
+  //         </div>
+  //       </div>
+  //     </div>
+  //   `;
+    
+  //   // Show the modal
+  //   modal.style.display = 'block';
+  // }
+
   function setupEmailPopupListeners() {
-    const modal = document.getElementById('emailModal');
-    const closeBtn = document.getElementById('closeModalBtn');
     const emailItems = document.querySelectorAll('.email-item');
+    const modal = document.getElementById('emailModal');
+    const closeModalBtn = document.getElementById('closeModalBtn');
     
     // Add click event to each email item
     emailItems.forEach(item => {
-      item.addEventListener('click', function() {
-        const index = this.getAttribute('data-index');
-        showEmailDetails(index);
+      item.addEventListener('click', () => {
+        const index = parseInt(item.getAttribute('data-index'));
+        const email = window.emailData[index];
+        
+        // Populate modal content
+        document.getElementById('modalTitle').innerText = email.subject;
+        
+        let securityDetails = `
+          <div class="security-details">
+            <h4>Security Check Results</h4>
+            <div class="security-item ${email.securityDetails.spf.pass ? 'security-pass' : 'security-fail'}">
+              <strong>SPF:</strong> ${email.securityDetails.spf.details}
+            </div>
+            <div class="security-item ${email.securityDetails.dkim.pass ? 'security-pass' : 'security-fail'}">
+              <strong>DKIM:</strong> ${email.securityDetails.dkim.details}
+            </div>
+            <div class="security-item ${email.securityDetails.dmarc.pass ? 'security-pass' : 'security-fail'}">
+              <strong>DMARC:</strong> ${email.securityDetails.dmarc.details}
+            </div>
+            ${email.securityDetails.urlCheck ? 
+              `<div class="security-item ${email.securityDetails.urlCheck.pass ? 'security-pass' : 'security-fail'}">
+                <strong>URL Check:</strong> ${email.securityDetails.urlCheck.details}
+              </div>` : ''}
+          </div>
+        `;
+        
+        // Add URLs if present
+        let urlSection = '';
+        if (email.urls && email.urls.length > 0) {
+          urlSection = `
+            <div class="url-section">
+              <h4>URLs in this email (${email.urls.length})</h4>
+              <ul class="url-list">
+                ${email.urls.map(url => `
+                  <li class="url-item">${url}</li>
+                `).join('')}
+              </ul>
+            </div>
+          `;
+        }
+        
+        // Add email content
+        const emailContent = `
+          <p><strong>From:</strong> ${email.from}</p>
+          <p><strong>Date:</strong> ${email.date}</p>
+          <p><strong>Snippet:</strong> ${email.snippet}</p>
+          <p><strong>Security Status:</strong> 
+            <span class="${email.securityStatus === 'safe' ? 'security-pass' : 'security-fail'}">
+              ${email.securityStatus.toUpperCase()}
+            </span>
+          </p>
+          ${securityDetails}
+          ${urlSection}
+        `;
+        
+        document.getElementById('modalContent').innerHTML = emailContent;
+        
+        // Show modal
+        modal.style.display = 'block';
       });
     });
     
-    // Close modal when clicking the X button
-    if (closeBtn) {
-      closeBtn.addEventListener('click', function() {
-        modal.style.display = 'none';
-      });
-    }
+    // Close modal when X is clicked
+    closeModalBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
+    });
     
-    // Close modal when clicking outside the content
-    window.addEventListener('click', function(event) {
+    // Close modal when clicking outside of it
+    window.addEventListener('click', (event) => {
       if (event.target === modal) {
         modal.style.display = 'none';
       }
     });
-  }
-  
-  // Function to show email details in modal
-  function showEmailDetails(index) {
-    // Make sure we have the email data
-    if (!window.emailData || !window.emailData[index]) return;
-    
-    const email = window.emailData[index];
-    const modal = document.getElementById('emailModal');
-    const modalContent = document.getElementById('modalContent');
-    
-    // Update modal content
-    document.getElementById('modalTitle').textContent = email.subject;
-    
-    modalContent.innerHTML = `
-      <div class="email-meta"><strong>From:</strong> ${email.from}</div>
-      <div class="email-meta"><strong>Date:</strong> ${email.date}</div>
-      <div class="email-meta"><strong>Subject:</strong> ${email.subject}</div>
-      
-      <div style="margin: 15px 0; padding: 10px; background-color: #f9f9f9; border-left: 4px solid #ccc;">
-        ${email.snippet}
-      </div>
-      
-      <div class="security-details">
-        <h4>Security Analysis</h4>
-        <div style="margin-bottom: 10px;">
-          <strong>Overall Status: </strong>
-          <span style="color: ${email.securityStatus === 'safe' ? '#4CAF50' : '#F44336'}; font-weight: bold;">
-            ${email.securityStatus === 'safe' ? 'SAFE' : 'SUSPICIOUS'}
-          </span>
-        </div>
-        
-        <div class="security-item">
-          <strong>SPF (Sender Policy Framework): </strong>
-          <span class="${email.securityDetails.spf.pass ? 'security-pass' : 'security-fail'}">
-            ${email.securityDetails.spf.pass ? 'PASS' : 'FAIL'} 
-            (${email.securityDetails.spf.details || 'Unknown'})
-          </span>
-          <div style="font-size: 12px; margin-top: 3px; color: #666;">
-            Verifies that the sender's email server is authorized to send email from that domain.
-          </div>
-        </div>
-        
-        <div class="security-item">
-          <strong>DKIM (DomainKeys Identified Mail): </strong>
-          <span class="${email.securityDetails.dkim.pass ? 'security-pass' : 'security-fail'}">
-            ${email.securityDetails.dkim.pass ? 'PASS' : 'FAIL'}
-            (${email.securityDetails.dkim.details || 'Unknown'})
-          </span>
-          <div style="font-size: 12px; margin-top: 3px; color: #666;">
-            Ensures the email content hasn't been tampered with during transit.
-          </div>
-        </div>
-        
-        <div class="security-item">
-          <strong>DMARC (Domain-based Message Authentication): </strong>
-          <span class="${email.securityDetails.dmarc.pass ? 'security-pass' : 'security-fail'}">
-            ${email.securityDetails.dmarc.pass ? 'PASS' : 'FAIL'}
-            (${email.securityDetails.dmarc.details || 'Unknown'})
-          </span>
-          <div style="font-size: 12px; margin-top: 3px; color: #666;">
-            Provides instructions for how to handle emails that fail SPF or DKIM checks.
-          </div>
-        </div>
-      </div>
-    `;
-    
-    // Show the modal
-    modal.style.display = 'block';
   }
 
   const navItems = document.querySelectorAll(".nav-item");
@@ -124,7 +206,7 @@ document.addEventListener("DOMContentLoaded", function () {
       
       try {
         const { token, userId } = await getTokenAndUserId();
-
+    
         const response = await fetch(
           "http://localhost:4000/api/gmail/extract",
           {
@@ -229,6 +311,22 @@ document.addEventListener("DOMContentLoaded", function () {
                 .security-fail {
                   color: #F44336;
                 }
+                .url-list {
+                  margin-top: 15px;
+                  padding: 0;
+                  list-style-type: none;
+                }
+                .url-item {
+                  padding: 8px;
+                  border-bottom: 1px solid #eee;
+                  word-break: break-all;
+                }
+                .url-section {
+                  margin-top: 15px;
+                }
+                .url-section h4 {
+                  margin-bottom: 10px;
+                }
               </style>
               
               <!-- Modal/Popup container -->
@@ -252,6 +350,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     </div>
                     <div class="email-meta"><strong>Subject:</strong> ${email.subject}</div>
                     <div class="email-meta"><strong>Date:</strong> ${email.date}</div>
+                    ${email.urls && email.urls.length > 0 ? 
+                      `<div class="email-meta"><strong>URLs:</strong> ${email.urls.length} found</div>` : 
+                      ''}
                   </li>`)
                   .join("")}
               </ul>
