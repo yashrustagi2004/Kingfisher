@@ -1,8 +1,36 @@
 const { google } = require("googleapis");
 const TrustedDomains = require("../models/trusted"); // Adjust path as needed
+const EmailResult = require("../models/emailResults");
+const UserSettings = require("../models/userSettings");
 const fs = require('fs');
 const csv = require('csv-parser');
 const path = require('path');
+
+/**
+ * Check if emails need to be refreshed
+ * @param {String} googleId - User's Google ID
+ * @returns {Boolean} - True if emails need refresh, false otherwise
+ */
+async function shouldRefreshEmails(googleId) {
+  try {
+    const settings = await UserSettings.findOne({ googleId });
+    if (!settings) return true;
+    
+    // If auto-check is disabled, always refresh
+    if (!settings.autoCheckEmails) return true;
+    
+    // Check if we've passed the refresh interval
+    if (!settings.lastChecked) return true;
+    
+    const now = new Date();
+    const hoursSinceLastCheck = (now - settings.lastChecked) / (1000 * 60 * 60);
+    
+    return hoursSinceLastCheck >= settings.checkFrequency;
+  } catch (error) {
+    console.error("Error checking refresh status:", error);
+    return true; // Refresh on error to be safe
+  }
+}
 
 /**
  * Extract and process Gmail emails with security checks
@@ -21,6 +49,29 @@ exports.getGmailEmails = async (req, res) => {
   }
 
   try {
+    // Check user settings for auto-check status
+    const settings = await UserSettings.findOne({ googleId }) || 
+                    await new UserSettings({ googleId }).save();
+    
+    // Check if we have recent results and auto-check is enabled
+    const needsRefresh = await shouldRefreshEmails(googleId);
+    
+    // If auto-check enabled and we have recent results, use the stored data
+    if (settings.autoCheckEmails && !needsRefresh) {
+      const storedResults = await EmailResult.findOne({ googleId })
+                                  .sort({ lastUpdated: -1 })
+                                  .limit(1);
+      
+      if (storedResults) {
+        return res.json({
+          success: true,
+          emails: storedResults.emails,
+          fromCache: true,
+          lastUpdated: storedResults.lastUpdated
+        });
+      }
+    }
+
     // Setup OAuth client with token
     const oauth2Client = new google.auth.OAuth2();
     oauth2Client.setCredentials({ access_token: token });
@@ -41,6 +92,13 @@ exports.getGmailEmails = async (req, res) => {
     const messages = messagesRes.data.messages || [];
     
     if (messages.length === 0) {
+      // Update last checked time
+      await UserSettings.findOneAndUpdate(
+        { googleId }, 
+        { lastChecked: new Date() },
+        { new: true, upsert: true }
+      );
+      
       return res.json({
         success: true,
         emails: [],
@@ -99,18 +157,119 @@ exports.getGmailEmails = async (req, res) => {
       });
       
       processedCount++;
-      console.log("processed emails:", processedCount);
     }
 
     // Check URLs against malicious URL database
     const checkedEmails = await checkUrlsAgainstDatabase(processedEmails);
 
+    // Save results to database if auto-check is enabled
+    if (settings.autoCheckEmails) {
+      await EmailResult.findOneAndUpdate(
+        { googleId },
+        { 
+          googleId,
+          emails: checkedEmails,
+          lastUpdated: new Date()
+        },
+        { new: true, upsert: true }
+      );
+    }
+    
+    // Update last checked time regardless of auto-check status
+    await UserSettings.findOneAndUpdate(
+      { googleId }, 
+      { lastChecked: new Date() },
+      { new: true, upsert: true }
+    );
+
     res.json({
       success: true,
       emails: checkedEmails,
+      fromCache: false
     });
   } catch (err) {
     console.error("Error processing emails:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+/**
+ * Toggle auto-check emails setting
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+exports.toggleAutoCheck = async (req, res) => {
+  const { googleId, autoCheckEmails } = req.body;
+  
+  if (!googleId) {
+    return res.status(400).json({ error: "No Google ID provided" });
+  }
+  
+  try {
+    const settings = await UserSettings.findOneAndUpdate(
+      { googleId },
+      { 
+        googleId,
+        autoCheckEmails: Boolean(autoCheckEmails),
+        lastChecked: autoCheckEmails ? new Date() : null
+      },
+      { new: true, upsert: true }
+    );
+    
+    res.json({
+      success: true, 
+      autoCheckEmails: settings.autoCheckEmails
+    });
+  } catch (err) {
+    console.error("Error toggling auto-check:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+/**
+ * Get current auto-check status
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+exports.getAutoCheckStatus = async (req, res) => {
+  const { googleId } = req.query;
+  
+  if (!googleId) {
+    return res.status(400).json({ error: "No Google ID provided" });
+  }
+  
+  try {
+    const settings = await UserSettings.findOne({ googleId }) || 
+                     { autoCheckEmails: false };
+    
+    res.json({
+      success: true,
+      autoCheckEmails: settings.autoCheckEmails
+    });
+  } catch (err) {
+    console.error("Error getting auto-check status:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+/**
+ * Manually trigger email check and save to database
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+exports.forceCheckEmails = async (req, res) => {
+  const { token, googleId } = req.body;
+
+  if (!token || !googleId) {
+    return res.status(400).json({ error: "Missing required parameters" });
+  }
+
+  try {
+    // Call the existing getGmailEmails logic but force a refresh
+    req.body.forceRefresh = true;
+    await exports.getGmailEmails(req, res);
+  } catch (err) {
+    console.error("Error forcing email check:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 };

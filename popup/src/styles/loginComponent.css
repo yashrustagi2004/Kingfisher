@@ -10,30 +10,36 @@ body {
   justify-content: center;
   align-items: center;
   background-color: #f5a2a1;
-  min-height: 100vh; 
+  min-height: 100vh;
+}
+
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
 }
 
 .login-card {
   background-color: #ffcccb;
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  width: 250px;
-  height: 110px;
-  /* border: 2px solid; */
-  padding: 20px; 
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  width: 270px;
+  min-height: 120px;
+  padding: 20px;
+  border-radius: 12px;
+  position: relative;
 }
 
 .brand {
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   font-size: 28px;
   font-weight: bold;
   color: #333;
-  /* border: 2px solid; */
   text-align: center;
-  width: 225px;
+  width: 100%;
 }
 
 .login-btn {
@@ -46,22 +52,61 @@ body {
   color: #333;
   cursor: pointer;
   transition: background-color 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .login-btn:hover {
   background-color: #87c5ff;
 }
 
-.hidden {
-  display: none;
+.google-icon {
+  width: 20px;
+  height: 20px;
 }
 
-/* Toggle Switch */
+.user-info {
+  display: flex;
+  align-items: center;
+  margin-top: 12px;
+  gap: 10px;
+}
+
+.profile-pic {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-name {
+  font-weight: bold;
+  color: #333;
+}
+
+.user-email {
+  font-size: 14px;
+  color: #555;
+}
+
+#logged-in-options {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
 .toggle-switch {
   position: relative;
   width: 40px;
   height: 20px;
-  margin-right: 10px; 
 }
 
 .toggle-switch input {
@@ -102,47 +147,93 @@ input:checked + .slider:before {
   transform: translateX(20px);
 }
 
-/* Settings Icon */
 #settings-icon {
   width: 24px;
   height: 24px;
   cursor: pointer;
 }
 
-#logged-in-options {
+.logout-btn {
+  padding: 6px 12px;
+  font-size: 14px;
+  background-color: #fff;
+  border: 1px solid #333;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.logout-btn:hover {
+  background-color: #eee;
+}
+
+/* Auto-check toggle block */
+.settings-container {
+  margin-top: 15px;
+  width: 100%;
+}
+
+.toggle-container {
   display: flex;
-  align-items: center;
-  justify-content: center; /* Center items horizontally */
-  margin-top: 10px; /* Add margin for spacing */
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.toggle-label {
+  margin-bottom: 4px;
+  font-weight: bold;
+  color: #333;
+}
+
+.toggle-description {
+  font-size: 12px;
+  color: #555;
+  margin-top: 4px;
+  max-width: 220px;
+}
+
+/* Notification Styles */
+.notification {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  background-color: #a9ffcb;
+  padding: 10px 18px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+  z-index: 9999;
+  color: #222;
+  font-size: 14px;
+}
+
+.notification.error {
+  background-color: #ffadad;
+  color: #721c24;
 }
 
 /* Responsive styles */
 @media (max-width: 768px) {
   .login-card {
-      padding: 25px 30px;
+    padding: 25px 30px;
   }
-  
+
   .brand {
-      width: 200px;
+    font-size: 24px;
   }
 }
 
 @media (max-width: 480px) {
   .brand {
-      font-size: 22px;
-      width: 180px;
+    font-size: 22px;
   }
-  
-  .login-btn {
-      font-size: 14px;
-  }
-  
-  .login-card {
-      padding: 20px 25px;
-  }
-}
 
-#settings-icon{
-  height: 32;
-  width: 32;
+  .login-btn {
+    font-size: 14px;
+  }
+
+  .login-card {
+    padding: 20px 25px;
+  }
 }

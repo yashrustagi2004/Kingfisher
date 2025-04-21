@@ -9,6 +9,17 @@ require("dotenv").config();
 const app = express();
 const PORT = 4000;
 
+const cron = require('node-cron');
+const { runBackgroundEmailChecks } = require('./services/emailCheckService');
+
+// Run email checks every hour
+cron.schedule('0 * * * *', () => {
+  console.log('Running scheduled email checks...');
+  runBackgroundEmailChecks()
+    .then(() => console.log('Scheduled email checks completed'))
+    .catch(err => console.error('Error in scheduled email checks:', err));
+});
+
 // ✅ FIX: CORS setup
 app.use(
   cors({
