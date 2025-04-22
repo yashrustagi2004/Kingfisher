@@ -36,6 +36,78 @@ async function shouldRefreshEmails(googleId, forceRefresh = false) {
 }
 
 /**
+ * Detect language and translate text to English if needed, logging to console only
+ * @param {String} text - Text to translate
+ * @param {String} type - Type of content being translated (for logging)
+ * @param {String} emailSubject - Subject of the email for reference in logs
+ */
+async function logTranslationIfNeeded(text, type, emailSubject) {
+  if (!text || text.trim() === '') return;
+  
+  try {
+    const res = await fetch("http://localhost:3000/translate", {
+      method: "POST",
+      body: JSON.stringify({
+        q: text,
+        source: "auto",
+        target: "en",
+        format: "text",
+        alternatives: 3,
+        api_key: ""
+      }),
+      headers: { "Content-Type": "application/json" }
+    });
+    
+    if (!res.ok) {
+      throw new Error(`Translation API returned ${res.status}: ${res.statusText}`);
+    }
+    
+    const translationResult = await res.json();
+    
+    // Only log if detected language isn't English
+    const isEnglish = translationResult.detectedLanguage?.language === "en";
+    
+    if (!isEnglish && translationResult.detectedLanguage?.language) {
+      console.log(`--------------------------------------------`);
+      console.log(`Translation for email "${emailSubject}":`);
+      console.log(`Content type: ${type}`);
+      console.log(`Detected language: ${translationResult.detectedLanguage.language} (${translationResult.detectedLanguage.confidence}% confidence)`);
+      console.log(`Original text sample: ${text.substring(0, 100)}...`);
+      console.log(`Full translated text: ${translationResult.translatedText}`);
+      console.log(`--------------------------------------------`);
+    }
+  } catch (error) {
+    console.error(`Translation error for email "${emailSubject}" (${type}):`, error);
+  }
+}
+
+/**
+ * Extract text content from email parts
+ * @param {Object} part - Email part object
+ * @returns {String} - Extracted text content
+ */
+function extractTextContent(part) {
+  let content = '';
+  
+  if (part.mimeType === 'text/plain' && part.body && part.body.data) {
+    content = Buffer.from(part.body.data, 'base64').toString('utf8');
+  } else if (part.mimeType === 'text/html' && part.body && part.body.data) {
+    // For HTML content, we extract it but don't do any HTML-to-text conversion
+    // A more sophisticated approach would use an HTML parser
+    content = Buffer.from(part.body.data, 'base64').toString('utf8');
+  }
+  
+  // Process nested parts if they exist
+  if (part.parts && Array.isArray(part.parts)) {
+    part.parts.forEach(subPart => {
+      content += extractTextContent(subPart);
+    });
+  }
+  
+  return content;
+}
+
+/**
  * Extract and process Gmail emails with security checks
  * @param {Object} req - Request object containing auth token
  * @param {Object} res - Response object
@@ -122,6 +194,9 @@ exports.getGmailEmails = async (req, res) => {
     // Process all fetched emails
     let processedEmails = [];
     let processedCount = 0;
+    
+    // Create a container for translation promises
+    const translationPromises = [];
 
     for (const response of emailResponses) {
       if (processedCount >= 40) break;
@@ -146,9 +221,22 @@ exports.getGmailEmails = async (req, res) => {
       const date = headers.find((h) => h.name === "Date")?.value;
       const snippet = msg.snippet || "";
       
-      // Extract URLs from email content
+      // Extract URLs from the email
       const urls = extractUrlsFromEmail(msg);
-
+      
+      // Extract text content for translation
+      const textContent = extractTextContent(msg.payload);
+      
+      // Add translation promises for both snippet and full content
+      if (snippet) {
+        translationPromises.push(logTranslationIfNeeded(snippet, "Snippet", subject));
+      }
+      
+      if (textContent) {
+        translationPromises.push(logTranslationIfNeeded(textContent, "Body", subject));
+      }
+      
+      // Add the email to processed emails without waiting for translations
       processedEmails.push({
         subject,
         from,
@@ -156,13 +244,13 @@ exports.getGmailEmails = async (req, res) => {
         snippet,
         securityStatus: securityStatus.status,
         securityDetails: securityStatus.details,
-        urls // Add extracted URLs to the processed email object
+        urls
       });
       
       processedCount++;
     }
 
-    // Check URLs against malicious URL database
+    // Process URL checks
     const checkedEmails = await checkUrlsAgainstDatabase(processedEmails);
 
     // Save results to database if auto-check is enabled
@@ -185,6 +273,12 @@ exports.getGmailEmails = async (req, res) => {
       { new: true, upsert: true }
     );
 
+    // Fire off translations in the background without waiting for them
+    // This ensures they don't block the response
+    Promise.all(translationPromises).catch(err => {
+      console.error("Background translation error:", err);
+    });
+
     res.json({
       success: true,
       emails: checkedEmails,
@@ -195,6 +289,8 @@ exports.getGmailEmails = async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 };
+
+
 
 /**
  * Toggle auto-check emails setting
