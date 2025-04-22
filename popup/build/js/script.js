@@ -77,45 +77,50 @@ document.addEventListener("DOMContentLoaded", function () {
         
         // Build modal content
         modalContent.innerHTML = `
-          <div class="email-details">
-            <p><strong>From:</strong> ${email.from}</p>
-            <p><strong>Date:</strong> ${email.date}</p>
-            <p><strong>Status:</strong> 
-              <span class="${email.securityStatus === 'safe' ? 'security-pass' : 'security-fail'}">
-                ${email.securityStatus === 'safe' ? 'SAFE' : 'SUSPICIOUS'}
-              </span>
-            </p>
-            <p><strong>Snippet:</strong> ${email.snippet}</p>
+        <div class="email-details">
+          <p><strong>From:</strong> ${email.from}</p>
+          <p><strong>Date:</strong> ${email.date}</p>
+          <p><strong>Status:</strong> 
+            <span class="${email.securityStatus === 'safe' ? 'security-pass' : 'security-fail'}">
+              ${email.securityStatus === 'safe' ? 'SAFE' : 'SUSPICIOUS'}
+            </span>
+          </p>
+          <p><strong>Snippet:</strong> ${email.snippet}</p>
+        </div>
+        
+        <div class="security-details">
+          <h4>Security Details</h4>
+          <div class="security-item ${email.securityDetails.spf.pass ? 'security-pass' : 'security-fail'}">
+            <strong>SPF:</strong> ${email.securityDetails.spf.details}
           </div>
-          
-          <div class="security-details">
-            <h4>Security Details</h4>
-            <div class="security-item ${email.securityDetails.spf.pass ? 'security-pass' : 'security-fail'}">
-              <strong>SPF:</strong> ${email.securityDetails.spf.details}
-            </div>
-            <div class="security-item ${email.securityDetails.dkim.pass ? 'security-pass' : 'security-fail'}">
-              <strong>DKIM:</strong> ${email.securityDetails.dkim.details}
-            </div>
-            <div class="security-item ${email.securityDetails.dmarc.pass ? 'security-pass' : 'security-fail'}">
-              <strong>DMARC:</strong> ${email.securityDetails.dmarc.details}
-            </div>
-            ${email.securityDetails.urlCheck ? `
-            <div class="security-item ${email.securityDetails.urlCheck.pass ? 'security-pass' : 'security-fail'}">
-              <strong>URL Check:</strong> ${email.securityDetails.urlCheck.details}
-            </div>
-            ` : ''}
+          <div class="security-item ${email.securityDetails.dkim.pass ? 'security-pass' : 'security-fail'}">
+            <strong>DKIM:</strong> ${email.securityDetails.dkim.details}
           </div>
-          
-          ${email.urls && email.urls.length > 0 ? `
-          <div class="url-section">
-            <h4>Malicious URLs in this email (${email.urls.length})</h4>
-            <ul class="url-list">
-              ${email.urls.map(url => `<li class="url-item">${url}</li>`).join('')}
-            </ul>
+          <div class="security-item ${email.securityDetails.dmarc.pass ? 'security-pass' : 'security-fail'}">
+            <strong>DMARC:</strong> ${email.securityDetails.dmarc.details}
+          </div>
+          ${email.securityDetails.urlCheck ? `
+          <div class="security-item ${email.securityDetails.urlCheck.pass ? 'security-pass' : 'security-fail'}">
+            <strong>URL Check:</strong> ${email.securityDetails.urlCheck.details}
           </div>
           ` : ''}
-        `;
+          ${email.securityDetails.nlpCheck ? `
+          <div class="security-item ${email.securityDetails.nlpCheck.pass ? 'security-pass' : 'security-fail'}">
+            <strong>NLP Check:</strong> ${email.securityDetails.nlpCheck.details}
+          </div>
+          ` : ''}
+        </div>
         
+        ${email.urls && email.urls.length > 0 ? `
+        <div class="url-section">
+          <h4>Malicious URLs in this email (${email.urls.length})</h4>
+          <ul class="url-list">
+            ${email.urls.map(url => `<li class="url-item">${url}</li>`).join('')}
+          </ul>
+        </div>
+        ` : ''}
+      `;
+              
         // Show modal
         modal.style.display = 'block';
       });
