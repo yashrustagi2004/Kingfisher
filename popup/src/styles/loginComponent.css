@@ -9,8 +9,8 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: #f5a2a1;
   min-height: 100vh;
+  background-color: #2b2b2b;
 }
 
 .container {
@@ -24,88 +24,51 @@ body {
   background-color: #ffcccb;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   width: 270px;
-  min-height: 120px;
-  padding: 20px;
-  border-radius: 12px;
+  padding: 15px;
+  border-radius: 8px;
   position: relative;
+  border: 5px solid #ff9e9e;
 }
 
-.brand {
-  margin-bottom: 12px;
-  font-size: 28px;
-  font-weight: bold;
-  color: #333;
-  text-align: center;
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   width: 100%;
 }
 
+.brand {
+  font-size: 24px;
+  font-weight: bold;
+  color: #333;
+}
+
 .login-btn {
-  margin-top: 7px;
   background-color: #a9d6ff;
-  border: 1px solid #333;
-  border-radius: 10px;
-  padding: 10px;
+  border: none;
+  border-radius: 20px;
+  padding: 5px 20px;
   font-size: 16px;
   color: #333;
   cursor: pointer;
   transition: background-color 0.3s ease;
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .login-btn:hover {
   background-color: #87c5ff;
 }
 
-.google-icon {
-  width: 20px;
-  height: 20px;
-}
-
-.user-info {
+.toggle-controls {
   display: flex;
   align-items: center;
-  margin-top: 12px;
   gap: 10px;
-}
-
-.profile-pic {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.user-details {
-  display: flex;
-  flex-direction: column;
-}
-
-.user-name {
-  font-weight: bold;
-  color: #333;
-}
-
-.user-email {
-  font-size: 14px;
-  color: #555;
-}
-
-#logged-in-options {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  margin-top: 12px;
 }
 
 .toggle-switch {
   position: relative;
-  width: 40px;
+  display: inline-block;
+  width: 36px;
   height: 20px;
 }
 
@@ -115,7 +78,7 @@ body {
   height: 0;
 }
 
-.slider {
+.toggle-switch .slider {
   position: absolute;
   cursor: pointer;
   top: 0;
@@ -123,20 +86,20 @@ body {
   right: 0;
   bottom: 0;
   background-color: #ccc;
-  border-radius: 20px;
   transition: 0.3s;
+  border-radius: 34px;
 }
 
-.slider:before {
+.toggle-switch .slider:before {
   position: absolute;
   content: "";
-  height: 14px;
-  width: 14px;
-  left: 3px;
-  bottom: 3px;
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
   background-color: white;
-  border-radius: 50%;
   transition: 0.3s;
+  border-radius: 50%;
 }
 
 input:checked + .slider {
@@ -144,52 +107,25 @@ input:checked + .slider {
 }
 
 input:checked + .slider:before {
-  transform: translateX(20px);
+  transform: translateX(16px);
 }
 
-#settings-icon {
-  width: 24px;
-  height: 24px;
-  cursor: pointer;
-}
-
-.logout-btn {
-  padding: 6px 12px;
-  font-size: 14px;
-  background-color: #fff;
-  border: 1px solid #333;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.logout-btn:hover {
-  background-color: #eee;
-}
-
-/* Auto-check toggle block */
-.settings-container {
-  margin-top: 15px;
-  width: 100%;
-}
-
-.toggle-container {
+.auto-check-toggle {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
+  gap: 10px;
+  margin-top: 15px;
 }
 
 .toggle-label {
-  margin-bottom: 4px;
-  font-weight: bold;
+  font-size: 14px;
   color: #333;
 }
 
-.toggle-description {
-  font-size: 12px;
-  color: #555;
-  margin-top: 4px;
-  max-width: 220px;
+#settings-icon {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
 }
 
 /* Notification Styles */
@@ -214,16 +150,6 @@ input:checked + .slider:before {
 }
 
 /* Responsive styles */
-@media (max-width: 768px) {
-  .login-card {
-    padding: 25px 30px;
-  }
-
-  .brand {
-    font-size: 24px;
-  }
-}
-
 @media (max-width: 480px) {
   .brand {
     font-size: 22px;
@@ -231,9 +157,6 @@ input:checked + .slider:before {
 
   .login-btn {
     font-size: 14px;
-  }
-
-  .login-card {
-    padding: 20px 25px;
+    padding: 4px 15px;
   }
 }

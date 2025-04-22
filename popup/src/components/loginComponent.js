@@ -122,16 +122,7 @@ function LoginComponent() {
   };
 
   const handleSettingsClick = () => {
-    if (!isEnabled) return;
     chrome.tabs.create({ url: "settings.html" });
-  };
-
-  const handleLogout = () => {
-    chrome.storage.local.clear(() => {
-      setIsLoggedIn(false);
-      setUserInfo(null);
-      setAutoCheckEmails(false);
-    });
   };
 
   const showNotification = (message, type = "success") => {
@@ -150,64 +141,49 @@ function LoginComponent() {
   return (
     <div className="container">
       <div className="login-card">
-        <div className="brand">Kingfisher</div>
-
         {!isLoggedIn ? (
-          <button id="login-btn" className="login-btn" onClick={handleLoginClick}>
-            Sign in with Google
-          </button>
+          <div className="header-row">
+            <div className="brand">Kingfisher</div>
+            <button id="login-btn" className="login-btn" onClick={handleLoginClick}>
+              Login
+            </button>
+          </div>
         ) : (
           <>
-            <div className="user-info">
-              <div className="user-details">
-                <div className="user-name">{userInfo?.name}</div>
-                <div className="user-email">{userInfo?.email}</div>
-              </div>
-            </div>
-
-            <div className="settings-container">
-              <div className="toggle-container">
-                <label className="toggle-switch">
-                  <span className="toggle-label">Auto-check emails</span>
+            <div className="header-row">
+              <div className="brand">Kingfisher</div>
+              <div className="toggle-controls">
+                <label className="toggle-switch main-toggle">
                   <input
                     type="checkbox"
-                    id="autoCheckToggle"
-                    checked={autoCheckEmails}
-                    onChange={(e) => toggleAutoCheck(e.target.checked)}
+                    id="toggle-btn"
+                    checked={isEnabled}
+                    onChange={handleToggleChange}
                   />
                   <span className="slider round"></span>
                 </label>
-                <div className="toggle-description">
-                  When enabled, emails will be checked automatically in the background
-                </div>
+                <img
+                  src="setting.png"
+                  id="settings-icon"
+                  alt="Settings"
+                  onClick={handleSettingsClick}
+                  title="Settings"
+                />
               </div>
             </div>
-
-            <div id="logged-in-options">
+            
+            <div className="auto-check-toggle">
               <label className="toggle-switch">
                 <input
                   type="checkbox"
-                  id="toggle-btn"
-                  checked={isEnabled}
-                  onChange={handleToggleChange}
+                  id="autoCheckToggle"
+                  checked={autoCheckEmails}
+                  onChange={(e) => toggleAutoCheck(e.target.checked)}
+                  disabled={!isEnabled}
                 />
-                <span className="slider"></span>
+                <span className="slider round"></span>
               </label>
-
-              <img
-                src="setting.png"
-                id="settings-icon"
-                alt="Settings"
-                onClick={handleSettingsClick}
-                style={{
-                  cursor: isEnabled ? "pointer" : "not-allowed",
-                  opacity: isEnabled ? 1 : 0.5,
-                }}
-                title={isEnabled ? "Settings" : "Disabled while extension is OFF"}
-              />
-              <button id="logoutBtn" className="logout-btn" onClick={handleLogout}>
-                Logout
-              </button>
+              <span className="toggle-label">Auto-check emails</span>
             </div>
           </>
         )}
