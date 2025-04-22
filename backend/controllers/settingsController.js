@@ -1,5 +1,8 @@
 const User = require("../models/user");
-const TrustedDomains = require("../models/trusted")
+const TrustedDomains = require("../models/trusted");
+const EmailResult = require("../models/emailResults");
+const UserSettings = require("../models/userSettings");
+const TokenStorage = require("../models/tokenStorage");
 
 exports.getTrustedDomains = async (req, res) => {
   try {
@@ -127,20 +130,32 @@ exports.getAboutUs = (req, res) => {
 exports.deleteAccount = async (req, res) => {
   try {
     const googleId = req.params.googleId;
-
     if (!googleId) {
       return res.status(400).json({ success: false, message: "Google ID is missing" });
     }
-
-    const Udeleted = await User.findOneAndDelete({ googleId });
-    const TDdeleted= await TrustedDomains.findOneAndDelete({ googleId });
-    if (!Udeleted) {
+    
+    // Delete all user data across all collections
+    const deletionPromises = [
+      User.findOneAndDelete({ googleId }),
+      TrustedDomains.findOneAndDelete({ googleId }),
+      EmailResult.findOneAndDelete({ googleId }),
+      UserSettings.findOneAndDelete({ googleId }),
+      TokenStorage.findOneAndDelete({googleId}),
+      // Add any other collections that store user data
+    ];
+    
+    // Wait for all deletion operations to complete
+    const results = await Promise.all(deletionPromises);
+    
+    // Check if user was found and deleted
+    if (!results[0]) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
-    if (!TDdeleted) {
-      return res.status(404).json({ success: false, message: "User not found" });
-    }
-    res.json({ success: true, message: "Account deleted successfully" });
+    
+    // Log successful deletion of each data type
+    console.log(`✅ User data deleted for Google ID: ${googleId}`);
+    
+    res.json({ success: true, message: "Account and all related data deleted successfully" });
   } catch (err) {
     console.error("❌ Error deleting account:", err);
     res.status(500).json({ success: false, message: "Server error" });

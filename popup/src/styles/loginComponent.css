@@ -13,6 +13,13 @@ body {
   min-height: 100vh; 
 }
 
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
 .login-card {
   background-color: #ffcccb;
   display: flex;
@@ -22,7 +29,6 @@ body {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   width: 250px;
   height: 110px;
-  /* border: 2px solid; */
   padding: 20px; 
 }
 
@@ -31,7 +37,6 @@ body {
   font-size: 28px;
   font-weight: bold;
   color: #333;
-  /* border: 2px solid; */
   text-align: center;
   width: 225px;
 }
@@ -112,37 +117,80 @@ input:checked + .slider:before {
 #logged-in-options {
   display: flex;
   align-items: center;
-  justify-content: center; /* Center items horizontally */
-  margin-top: 10px; /* Add margin for spacing */
+  justify-content: center;
+  margin-top: 10px;
+}
+
+/* Auto-check toggle properties */
+.auto-check-toggle {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.toggle-label {
+  font-size: 14px;
+  color: #333;
+  margin-left: 5px;
+}
+
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.toggle-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Notification Styles */
+.notification {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  background-color: #a9ffcb;
+  padding: 10px 18px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+  z-index: 9999;
+  color: #222;
+  font-size: 14px;
+}
+
+.notification.error {
+  background-color: #ffadad;
+  color: #721c24;
 }
 
 /* Responsive styles */
 @media (max-width: 768px) {
   .login-card {
-      padding: 25px 30px;
+    padding: 25px 30px;
   }
   
   .brand {
-      width: 200px;
+    width: 200px;
   }
 }
 
 @media (max-width: 480px) {
   .brand {
-      font-size: 22px;
-      width: 180px;
+    font-size: 22px;
+    width: 180px;
   }
   
   .login-btn {
-      font-size: 14px;
+    font-size: 14px;
   }
   
   .login-card {
-      padding: 20px 25px;
+    padding: 20px 25px;
   }
-}
-
-#settings-icon{
-  height: 32;
-  width: 32;
 }

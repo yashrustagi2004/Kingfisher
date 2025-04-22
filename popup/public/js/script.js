@@ -14,121 +14,82 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
   }
+    // Add a notification function to script.js if not already there
+  function showNotification(message, type = 'success') {
+    // Check if notification container exists, if not create it
+    let notificationContainer = document.getElementById('notification-container');
+    if (!notificationContainer) {
+      notificationContainer = document.createElement('div');
+      notificationContainer.id = 'notification-container';
+      notificationContainer.style.position = 'fixed';
+      notificationContainer.style.top = '20px';
+      notificationContainer.style.right = '20px';
+      notificationContainer.style.zIndex = '9999';
+      document.body.appendChild(notificationContainer);
+    }
+    
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.style.backgroundColor = type === 'success' ? '#4CAF50' : '#F44336';
+    notification.style.color = 'white';
+    notification.style.padding = '12px 16px';
+    notification.style.marginBottom = '10px';
+    notification.style.borderRadius = '4px';
+    notification.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+    notification.style.opacity = '0';
+    notification.style.transition = 'opacity 0.3s ease';
+    notification.textContent = message;
+    
+    // Add to container
+    notificationContainer.appendChild(notification);
+    
+    // Trigger animation
+    setTimeout(() => {
+      notification.style.opacity = '1';
+    }, 10);
+    
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+      notification.style.opacity = '0';
+      setTimeout(() => {
+        notificationContainer.removeChild(notification);
+      }, 300);
+    }, 3000);
+  }
 
-  // function setupEmailPopupListeners() {
-  //   const modal = document.getElementById('emailModal');
-  //   const closeBtn = document.getElementById('closeModalBtn');
-  //   const emailItems = document.querySelectorAll('.email-item');
-    
-  //   // Add click event to each email item
-  //   emailItems.forEach(item => {
-  //     item.addEventListener('click', function() {
-  //       const index = this.getAttribute('data-index');
-  //       showEmailDetails(index);
-  //     });
-  //   });
-    
-  //   // Close modal when clicking the X button
-  //   if (closeBtn) {
-  //     closeBtn.addEventListener('click', function() {
-  //       modal.style.display = 'none';
-  //     });
-  //   }
-    
-  //   // Close modal when clicking outside the content
-  //   window.addEventListener('click', function(event) {
-  //     if (event.target === modal) {
-  //       modal.style.display = 'none';
-  //     }
-  //   });
-  // }
-  
-  // Function to show email details in modal
-  // function showEmailDetails(index) {
-  //   // Make sure we have the email data
-  //   if (!window.emailData || !window.emailData[index]) return;
-    
-  //   const email = window.emailData[index];
-  //   const modal = document.getElementById('emailModal');
-  //   const modalContent = document.getElementById('modalContent');
-    
-  //   // Update modal content
-  //   document.getElementById('modalTitle').textContent = email.subject;
-    
-  //   modalContent.innerHTML = `
-  //     <div class="email-meta"><strong>From:</strong> ${email.from}</div>
-  //     <div class="email-meta"><strong>Date:</strong> ${email.date}</div>
-  //     <div class="email-meta"><strong>Subject:</strong> ${email.subject}</div>
-      
-  //     <div style="margin: 15px 0; padding: 10px; background-color: #f9f9f9; border-left: 4px solid #ccc;">
-  //       ${email.snippet}
-  //     </div>
-      
-  //     <div class="security-details">
-  //       <h4>Security Analysis</h4>
-  //       <div style="margin-bottom: 10px;">
-  //         <strong>Overall Status: </strong>
-  //         <span style="color: ${email.securityStatus === 'safe' ? '#4CAF50' : '#F44336'}; font-weight: bold;">
-  //           ${email.securityStatus === 'safe' ? 'SAFE' : 'SUSPICIOUS'}
-  //         </span>
-  //       </div>
-        
-  //       <div class="security-item">
-  //         <strong>SPF (Sender Policy Framework): </strong>
-  //         <span class="${email.securityDetails.spf.pass ? 'security-pass' : 'security-fail'}">
-  //           ${email.securityDetails.spf.pass ? 'PASS' : 'FAIL'} 
-  //           (${email.securityDetails.spf.details || 'Unknown'})
-  //         </span>
-  //         <div style="font-size: 12px; margin-top: 3px; color: #666;">
-  //           Verifies that the sender's email server is authorized to send email from that domain.
-  //         </div>
-  //       </div>
-        
-  //       <div class="security-item">
-  //         <strong>DKIM (DomainKeys Identified Mail): </strong>
-  //         <span class="${email.securityDetails.dkim.pass ? 'security-pass' : 'security-fail'}">
-  //           ${email.securityDetails.dkim.pass ? 'PASS' : 'FAIL'}
-  //           (${email.securityDetails.dkim.details || 'Unknown'})
-  //         </span>
-  //         <div style="font-size: 12px; margin-top: 3px; color: #666;">
-  //           Ensures the email content hasn't been tampered with during transit.
-  //         </div>
-  //       </div>
-        
-  //       <div class="security-item">
-  //         <strong>DMARC (Domain-based Message Authentication): </strong>
-  //         <span class="${email.securityDetails.dmarc.pass ? 'security-pass' : 'security-fail'}">
-  //           ${email.securityDetails.dmarc.pass ? 'PASS' : 'FAIL'}
-  //           (${email.securityDetails.dmarc.details || 'Unknown'})
-  //         </span>
-  //         <div style="font-size: 12px; margin-top: 3px; color: #666;">
-  //           Provides instructions for how to handle emails that fail SPF or DKIM checks.
-  //         </div>
-  //       </div>
-  //     </div>
-  //   `;
-    
-  //   // Show the modal
-  //   modal.style.display = 'block';
-  // }
-
+  // Email popup setup function
   function setupEmailPopupListeners() {
     const emailItems = document.querySelectorAll('.email-item');
     const modal = document.getElementById('emailModal');
-    const closeModalBtn = document.getElementById('closeModalBtn');
+    const closeBtn = document.getElementById('closeModalBtn');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalContent = document.getElementById('modalContent');
     
     // Add click event to each email item
     emailItems.forEach(item => {
-      item.addEventListener('click', () => {
-        const index = parseInt(item.getAttribute('data-index'));
+      item.addEventListener('click', function() {
+        const index = this.getAttribute('data-index');
         const email = window.emailData[index];
         
-        // Populate modal content
-        document.getElementById('modalTitle').innerText = email.subject;
+        // Set modal title
+        modalTitle.textContent = email.subject;
         
-        let securityDetails = `
+        // Build modal content
+        modalContent.innerHTML = `
+          <div class="email-details">
+            <p><strong>From:</strong> ${email.from}</p>
+            <p><strong>Date:</strong> ${email.date}</p>
+            <p><strong>Status:</strong> 
+              <span class="${email.securityStatus === 'safe' ? 'security-pass' : 'security-fail'}">
+                ${email.securityStatus === 'safe' ? 'SAFE' : 'SUSPICIOUS'}
+              </span>
+            </p>
+            <p><strong>Snippet:</strong> ${email.snippet}</p>
+          </div>
+          
           <div class="security-details">
-            <h4>Security Check Results</h4>
+            <h4>Security Details</h4>
             <div class="security-item ${email.securityDetails.spf.pass ? 'security-pass' : 'security-fail'}">
               <strong>SPF:</strong> ${email.securityDetails.spf.details}
             </div>
@@ -138,56 +99,37 @@ document.addEventListener("DOMContentLoaded", function () {
             <div class="security-item ${email.securityDetails.dmarc.pass ? 'security-pass' : 'security-fail'}">
               <strong>DMARC:</strong> ${email.securityDetails.dmarc.details}
             </div>
-            ${email.securityDetails.urlCheck ? 
-              `<div class="security-item ${email.securityDetails.urlCheck.pass ? 'security-pass' : 'security-fail'}">
-                <strong>URL Check:</strong> ${email.securityDetails.urlCheck.details}
-              </div>` : ''}
-          </div>
-        `;
-        
-        // Add URLs if present
-        let urlSection = '';
-        if (email.urls && email.urls.length > 0) {
-          urlSection = `
-            <div class="url-section">
-              <h4>URLs in this email (${email.urls.length})</h4>
-              <ul class="url-list">
-                ${email.urls.map(url => `
-                  <li class="url-item">${url}</li>
-                `).join('')}
-              </ul>
+            ${email.securityDetails.urlCheck ? `
+            <div class="security-item ${email.securityDetails.urlCheck.pass ? 'security-pass' : 'security-fail'}">
+              <strong>URL Check:</strong> ${email.securityDetails.urlCheck.details}
             </div>
-          `;
-        }
-        
-        // Add email content
-        const emailContent = `
-          <p><strong>From:</strong> ${email.from}</p>
-          <p><strong>Date:</strong> ${email.date}</p>
-          <p><strong>Snippet:</strong> ${email.snippet}</p>
-          <p><strong>Security Status:</strong> 
-            <span class="${email.securityStatus === 'safe' ? 'security-pass' : 'security-fail'}">
-              ${email.securityStatus.toUpperCase()}
-            </span>
-          </p>
-          ${securityDetails}
-          ${urlSection}
+            ` : ''}
+          </div>
+          
+          ${email.urls && email.urls.length > 0 ? `
+          <div class="url-section">
+            <h4>Malicious URLs in this email (${email.urls.length})</h4>
+            <ul class="url-list">
+              ${email.urls.map(url => `<li class="url-item">${url}</li>`).join('')}
+            </ul>
+          </div>
+          ` : ''}
         `;
-        
-        document.getElementById('modalContent').innerHTML = emailContent;
         
         // Show modal
         modal.style.display = 'block';
       });
     });
     
-    // Close modal when X is clicked
-    closeModalBtn.addEventListener('click', () => {
-      modal.style.display = 'none';
-    });
+    // Close modal on close button click
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function() {
+        modal.style.display = 'none';
+      });
+    }
     
-    // Close modal when clicking outside of it
-    window.addEventListener('click', (event) => {
+    // Close modal when clicking outside
+    window.addEventListener('click', function(event) {
       if (event.target === modal) {
         modal.style.display = 'none';
       }
@@ -222,6 +164,19 @@ document.addEventListener("DOMContentLoaded", function () {
         
         if (response.ok && data.success) {
           const emails = data.emails;
+          
+          // Show cache status if applicable
+          let cacheNotice = '';
+          if (data.fromCache) {
+            const lastUpdated = new Date(data.lastUpdated);
+            const formattedDate = lastUpdated.toLocaleString();
+            cacheNotice = `
+              <div class="cache-notice">
+                <span>Showing cached results from ${formattedDate}</span>
+                <button id="refreshBtn" class="refresh-btn">Refresh Now</button>
+              </div>
+            `;
+          }
           
           if (emails.length > 0) {
             // Add CSS for the email list and popup
@@ -326,6 +281,42 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
                 .url-section h4 {
                   margin-bottom: 10px;
+                },
+                .cache-notice {
+                  background-color: #f0f8ff;
+                  border: 1px solid #cce5ff;
+                  border-radius: 4px;
+                  padding: 10px;
+                  margin-bottom: 15px;
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                }
+                .refresh-btn {
+                  background-color: #4285f4;
+                  color: white;
+                  border: none;
+                  padding: 6px 12px;
+                  border-radius: 4px;
+                  cursor: pointer;
+                  font-size: 14px;
+                  transition: background-color 0.3s;
+                }
+                .refresh-btn:hover {
+                  background-color: #3367d6;
+                }
+                .loading-spinner {
+                  display: inline-block;
+                  width: 16px;
+                  height: 16px;
+                  border: 2px solid rgba(255,255,255,0.3);
+                  border-radius: 50%;
+                  border-top-color: #fff;
+                  animation: spin 1s ease-in-out infinite;
+                  margin-left: 8px;
+                }
+                @keyframes spin {
+                  to { transform: rotate(360deg); }
                 }
               </style>
               
@@ -337,6 +328,8 @@ document.addEventListener("DOMContentLoaded", function () {
                   <div id="modalContent"></div>
                 </div>
               </div>
+              
+              ${cacheNotice}
               
               <ul class="email-list" id="emailListContainer">
                 ${emails
@@ -363,8 +356,60 @@ document.addEventListener("DOMContentLoaded", function () {
             
             // Add event listeners after DOM elements are created
             setupEmailPopupListeners();
+            
+            // Add refresh button functionality if showing cached data
+            if (data.fromCache) {
+              document.getElementById('refreshBtn').addEventListener('click', async function(e) {
+                const refreshBtn = e.target;
+                
+                // Show loading state
+                refreshBtn.innerHTML = 'Refreshing <span class="loading-spinner"></span>';
+                refreshBtn.disabled = true;
+                
+                try {
+                  const { token, userId } = await getTokenAndUserId();
+                  
+                  // Force a refresh
+                  const forceResponse = await fetch(
+                    "http://localhost:4000/api/gmail/force-check",
+                    {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({ token: token, googleId: userId }),
+                    }
+                  );
+                  
+                  if (forceResponse.ok) {
+                    showNotification('Email data refreshed successfully');
+                    // Re-render the home view with fresh data
+                    routes.home();
+                  } else {
+                    throw new Error('Failed to refresh data');
+                  }
+                } catch (error) {
+                  console.error('Error refreshing data:', error);
+                  showNotification('Failed to refresh data', 'error');
+                  
+                  // Reset button state
+                  refreshBtn.innerHTML = 'Refresh Now';
+                  refreshBtn.disabled = false;
+                }
+              });
+            }
           } else {
-            contentBody.innerHTML = "<p>No emails found.</p>";
+            contentBody.innerHTML = `
+              ${cacheNotice}
+              <p>No emails found.</p>
+            `;
+            
+            // Add refresh button functionality if showing cached data
+            if (data.fromCache) {
+              document.getElementById('refreshBtn').addEventListener('click', async function() {
+                routes.home(); // Reload the page
+              });
+            }
           }
         } else {
           contentBody.innerHTML = `<p>Error: ${
