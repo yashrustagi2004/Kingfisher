@@ -108,7 +108,7 @@ document.addEventListener("DOMContentLoaded", function () {
           
           ${email.urls && email.urls.length > 0 ? `
           <div class="url-section">
-            <h4>URLs in this email (${email.urls.length})</h4>
+            <h4>Malicious URLs in this email (${email.urls.length})</h4>
             <ul class="url-list">
               ${email.urls.map(url => `<li class="url-item">${url}</li>`).join('')}
             </ul>

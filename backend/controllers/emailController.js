@@ -11,7 +11,10 @@ const path = require('path');
  * @param {String} googleId - User's Google ID
  * @returns {Boolean} - True if emails need refresh, false otherwise
  */
-async function shouldRefreshEmails(googleId) {
+async function shouldRefreshEmails(googleId, forceRefresh = false) {
+  // If force refresh is requested, skip all other checks
+  if (forceRefresh) return true;
+  
   try {
     const settings = await UserSettings.findOne({ googleId });
     if (!settings) return true;
@@ -54,7 +57,7 @@ exports.getGmailEmails = async (req, res) => {
                     await new UserSettings({ googleId }).save();
     
     // Check if we have recent results and auto-check is enabled
-    const needsRefresh = await shouldRefreshEmails(googleId);
+    const needsRefresh = await shouldRefreshEmails(googleId, req.body.forceRefresh);
     
     // If auto-check enabled and we have recent results, use the stored data
     if (settings.autoCheckEmails && !needsRefresh) {
@@ -82,7 +85,7 @@ exports.getGmailEmails = async (req, res) => {
     const [messagesRes, trustedDomainsDoc] = await Promise.all([
       gmail.users.messages.list({
         userId: "me",
-        maxResults: 30, // Fetch more since we'll filter some out
+        maxResults: 50, // Fetch more since we'll filter some out
         q: "category:primary", // Filter to only include primary inbox
       }),
       TrustedDomains.findOne({ googleId })
@@ -106,7 +109,7 @@ exports.getGmailEmails = async (req, res) => {
     }
 
     // Batch request emails in parallel instead of serial fetches
-    const batchRequests = messages.slice(0, 20).map(message => 
+    const batchRequests = messages.slice(0, 40).map(message => 
       gmail.users.messages.get({
         userId: "me",
         id: message.id,
@@ -121,7 +124,7 @@ exports.getGmailEmails = async (req, res) => {
     let processedCount = 0;
 
     for (const response of emailResponses) {
-      if (processedCount >= 10) break;
+      if (processedCount >= 40) break;
 
       const msg = response.data;
       const headers = msg.payload.headers;
@@ -265,9 +268,17 @@ exports.forceCheckEmails = async (req, res) => {
   }
 
   try {
-    // Call the existing getGmailEmails logic but force a refresh
-    req.body.forceRefresh = true;
-    await exports.getGmailEmails(req, res);
+    // Create a new request object with the force refresh flag
+    const modifiedReq = {
+      ...req,
+      body: {
+        ...req.body,
+        forceRefresh: true
+      }
+    };
+    
+    // Call the getGmailEmails with the modified request
+    await exports.getGmailEmails(modifiedReq, res);
   } catch (err) {
     console.error("Error forcing email check:", err);
     res.status(500).json({ success: false, error: err.message });
@@ -381,6 +392,14 @@ function parseAuthenticationHeadersOptimized(headers) {
 function extractUrlsFromEmail(email) {
   const extractedUrls = [];
   
+  // Known DTD URLs to exclude
+  const dtdUrlsToExclude = [
+    'http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd',
+    'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd',
+    'http://www.w3.org/1999/xhtml'
+    // Add others as needed
+  ];
+  
   // Function to recursively process email parts
   function processEmailPart(part) {
     if (part.mimeType === 'text/plain' || part.mimeType === 'text/html') {
@@ -390,12 +409,14 @@ function extractUrlsFromEmail(email) {
         content = Buffer.from(part.body.data, 'base64').toString('utf8');
       }
       
-      // Extract URLs using regex
-      const urlRegex = /(https?:\/\/[^\s<>"']+)/g;
+      // Extract URLs using regex - more targeted to avoid DOCTYPE URLs
+      // This improved regex looks for URLs that are more likely to be actual links
+      const urlRegex = /(?:https?:\/\/[^\s<>"']+)(?=[^>]*(?:<|$))/g;
       const urlMatches = content.match(urlRegex) || [];
       
       urlMatches.forEach(url => {
-        if (!extractedUrls.includes(url)) {
+        // Skip known DTD URLs and other false positives
+        if (!dtdUrlsToExclude.includes(url) && !extractedUrls.includes(url)) {
           extractedUrls.push(url);
         }
       });
@@ -426,44 +447,47 @@ async function checkUrlsAgainstDatabase(emails) {
   
   // Check each email's URLs against the database
   return emails.map(email => {
-    // Only check URLs if headers were determined to be safe
-    if (email.securityStatus === 'safe' && email.urls && email.urls.length > 0) {
-      // Check if any URL is in the malicious database
-      const foundMaliciousUrl = email.urls.find(url => {
-        return maliciousUrls.some(entry => {
+    // Prepare arrays to hold detected malicious URLs
+    let detectedMaliciousUrls = [];
+    
+    // Only check URLs if there are any
+    if (email.urls && email.urls.length > 0) {
+      // Check each URL against the malicious database
+      email.urls.forEach(url => {
+        const isMalicious = maliciousUrls.some(entry => {
           // Check if URL contains the malicious URL pattern
           return url.includes(entry.url) && 
                  (entry.type === 'phishing' || entry.type === 'defacement' || entry.type === 'malware');
         });
+        
+        // If URL is malicious, add it to the detected list
+        if (isMalicious) {
+          detectedMaliciousUrls.push(url);
+        }
       });
-      
-      // If malicious URL found, update security status
-      if (foundMaliciousUrl) {
-        return {
-          ...email,
-          securityStatus: 'malicious',
-          securityDetails: {
-            ...email.securityDetails,
-            urlCheck: {
-              pass: false,
-              details: 'Malicious URL detected'
-            }
-          }
-        };
-      }
     }
     
-    // If no malicious URLs found, add URL check result but keep original status
-    return {
+    // Replace all URLs with only the malicious ones
+    const updatedEmail = {
       ...email,
+      urls: detectedMaliciousUrls, // Only include malicious URLs
       securityDetails: {
         ...email.securityDetails,
         urlCheck: {
-          pass: true,
-          details: 'No malicious URLs detected'
+          pass: detectedMaliciousUrls.length === 0,
+          details: detectedMaliciousUrls.length === 0 ? 
+                   'No malicious URLs detected' : 
+                   `${detectedMaliciousUrls.length} malicious URL(s) detected`
         }
       }
     };
+    
+    // Update security status if malicious URLs were found
+    if (detectedMaliciousUrls.length > 0 && email.securityStatus === 'safe') {
+      updatedEmail.securityStatus = 'malicious';
+    }
+    
+    return updatedEmail;
   });
 }
 
