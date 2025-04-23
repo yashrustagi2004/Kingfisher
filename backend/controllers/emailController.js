@@ -5,6 +5,7 @@ const UserSettings = require("../models/userSettings");
 const fs = require('fs');
 const csv = require('csv-parser');
 const path = require('path');
+const axios = require('axios'); // Add this import for the axios library
 
 /**
  * Check if emails need to be refreshed
@@ -40,9 +41,10 @@ async function shouldRefreshEmails(googleId, forceRefresh = false) {
  * @param {String} text - Text to translate
  * @param {String} type - Type of content being translated (for logging)
  * @param {String} emailSubject - Subject of the email for reference in logs
+ * @returns {Promise<String>} - Translated text or original text if English
  */
 async function logTranslationIfNeeded(text, type, emailSubject) {
-  if (!text || text.trim() === '') return;
+  if (!text || text.trim() === '') return '';
   
   try {
     const res = await fetch("http://localhost:3000/translate", {
@@ -75,9 +77,14 @@ async function logTranslationIfNeeded(text, type, emailSubject) {
       console.log(`Original text sample: ${text.substring(0, 100)}...`);
       console.log(`Full translated text: ${translationResult.translatedText}`);
       console.log(`--------------------------------------------`);
+      
+      return translationResult.translatedText;
     }
+    
+    return text; // Return original text if it's already in English
   } catch (error) {
     console.error(`Translation error for email "${emailSubject}" (${type}):`, error);
+    return text; // Return original text on error
   }
 }
 
@@ -105,6 +112,25 @@ function extractTextContent(part) {
   }
   
   return content;
+}
+
+/**
+ * Run text through NLP model for phishing detection
+ * @param {String} translatedText - Text to analyze
+ * @returns {Object} - Confidence and prediction from NLP model
+ */
+async function runNlpModel(translatedText) {
+  try {
+    const response = await axios.post('http://localhost:5000/predict', {
+      text: translatedText
+    });
+
+    const { confidence, prediction } = response.data;
+    return { confidence, prediction };
+  } catch (error) {
+    console.error('NLP model error:', error.message);
+    return { confidence: 0.0, prediction: 0 }; // default to safe side
+  }
 }
 
 /**
@@ -194,9 +220,6 @@ exports.getGmailEmails = async (req, res) => {
     // Process all fetched emails
     let processedEmails = [];
     let processedCount = 0;
-    
-    // Create a container for translation promises
-    const translationPromises = [];
 
     for (const response of emailResponses) {
       if (processedCount >= 40) break;
@@ -227,24 +250,41 @@ exports.getGmailEmails = async (req, res) => {
       // Extract text content for translation
       const textContent = extractTextContent(msg.payload);
       
-      // Add translation promises for both snippet and full content
-      if (snippet) {
-        translationPromises.push(logTranslationIfNeeded(snippet, "Snippet", subject));
-      }
+      // Translate both snippet and full content if needed
+      const translatedSnippet = await logTranslationIfNeeded(snippet, "Snippet", subject);
+      const translatedBody = await logTranslationIfNeeded(textContent, "Body", subject);
       
-      if (textContent) {
-        translationPromises.push(logTranslationIfNeeded(textContent, "Body", subject));
-      }
+      // Combine all text content for NLP analysis
+      const combinedText = `${translatedSnippet}\n${translatedBody}`;
       
-      // Add the email to processed emails without waiting for translations
+      // Run NLP Model for phishing detection
+      const { confidence, prediction } = await runNlpModel(combinedText);
+
+      // Use a confidence threshold of 80% for setting the overall security status
+      const isHighConfidencePhishing = prediction === 1 && confidence >= 0.9;
+
+      // Add the email to processed emails
       processedEmails.push({
         subject,
         from,
         date,
         snippet,
-        securityStatus: securityStatus.status,
-        securityDetails: securityStatus.details,
-        urls
+        // Only update status to malicious if we have high confidence
+        securityStatus: isHighConfidencePhishing ? 'malicious' : securityStatus.status,
+        securityDetails: {
+          ...securityStatus.details,
+          nlpCheck: {
+            pass: prediction !== 1,
+            details: prediction === 1 ? 
+                    `Potential phishing detected (${Math.round(confidence * 100)}% confidence)` : 
+                    `No phishing detected (${Math.round(confidence * 100)}% confidence)`
+          }
+        },
+        urls,
+        nlpConfidence: confidence,
+        nlpPrediction: prediction,
+        isPhishing: prediction === 1,
+        isHighConfidencePhishing: isHighConfidencePhishing
       });
       
       processedCount++;
@@ -273,12 +313,6 @@ exports.getGmailEmails = async (req, res) => {
       { new: true, upsert: true }
     );
 
-    // Fire off translations in the background without waiting for them
-    // This ensures they don't block the response
-    Promise.all(translationPromises).catch(err => {
-      console.error("Background translation error:", err);
-    });
-
     res.json({
       success: true,
       emails: checkedEmails,
@@ -289,8 +323,6 @@ exports.getGmailEmails = async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 };
-
-
 
 /**
  * Toggle auto-check emails setting
@@ -594,7 +626,7 @@ async function checkUrlsAgainstDatabase(emails) {
 function loadMaliciousUrlDatabase() {
   return new Promise((resolve, reject) => {
     const results = [];
-    const csvFilePath = path.join(__dirname, '../data/malicious_phish.csv');
+    const csvFilePath = path.join(__dirname, '..', 'data', 'malicious_phish.csv');
     
     fs.createReadStream(csvFilePath)
       .pipe(csv())
