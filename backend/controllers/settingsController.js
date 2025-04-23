@@ -3,6 +3,7 @@ const TrustedDomains = require("../models/trusted");
 const EmailResult = require("../models/emailResults");
 const UserSettings = require("../models/userSettings");
 const TokenStorage = require("../models/tokenStorage");
+const UserAnalysis = require('../models/userAnalysis');
 
 exports.getTrustedDomains = async (req, res) => {
   try {
@@ -96,13 +97,45 @@ exports.removeTrustedDomain = async (req, res) => {
   }
 };
 
-exports.getAnalysis = (req, res) => {
-  const data = {
-    totalEmailsScanned: 123,
-    suspiciousEmails: 12,
-    trustedEmails: 111,
-  };
-  return res.json(data);
+exports.getAnalysis = async (req, res) => {
+  try {
+    // Use googleId from request parameter or header (ensure consistency)
+    const googleId = req.params.googleId || req.headers.authorization; // Adjust as needed
+
+    if (!googleId) {
+      return res.status(400).json({ success: false, message: "No Google ID provided." });
+    }
+
+    const analysisData = await UserAnalysis.findOne({ googleId: googleId });
+
+    if (analysisData) {
+      // Map database fields to the expected response fields
+      res.status(200).json({
+        success: true,
+        totalEmailsScanned: analysisData.totalEmailsProcessed,
+        suspiciousEmails: analysisData.maliciousEmailsCount, // Map maliciousEmailsCount to suspiciousEmails
+        // You could add the senders list if needed by the frontend:
+        maliciousSenders: analysisData.maliciousSenders,
+        lastUpdated: analysisData.lastUpdated
+      });
+    } else {
+      // No analysis data found for this user yet, return defaults
+      res.status(200).json({
+        success: true,
+        totalEmailsScanned: 0,
+        suspiciousEmails: 0,
+        // maliciousSenders: [],
+        lastUpdated: null // Or new Date(0) or omit
+      });
+    }
+  } catch (error) {
+    console.error("Error getting analysis data:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve analysis data.",
+      error: error.message,
+    });
+  }
 };
 
 exports.getMaliciousDomains = (req, res) => {
@@ -141,6 +174,7 @@ exports.deleteAccount = async (req, res) => {
       EmailResult.findOneAndDelete({ googleId }),
       UserSettings.findOneAndDelete({ googleId }),
       TokenStorage.findOneAndDelete({googleId}),
+      UserAnalysis.findOneAndDelete({ googleId })
       // Add any other collections that store user data
     ];
     

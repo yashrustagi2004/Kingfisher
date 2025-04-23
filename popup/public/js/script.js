@@ -77,45 +77,50 @@ document.addEventListener("DOMContentLoaded", function () {
         
         // Build modal content
         modalContent.innerHTML = `
-          <div class="email-details">
-            <p><strong>From:</strong> ${email.from}</p>
-            <p><strong>Date:</strong> ${email.date}</p>
-            <p><strong>Status:</strong> 
-              <span class="${email.securityStatus === 'safe' ? 'security-pass' : 'security-fail'}">
-                ${email.securityStatus === 'safe' ? 'SAFE' : 'SUSPICIOUS'}
-              </span>
-            </p>
-            <p><strong>Snippet:</strong> ${email.snippet}</p>
+        <div class="email-details">
+          <p><strong>From:</strong> ${email.from}</p>
+          <p><strong>Date:</strong> ${email.date}</p>
+          <p><strong>Status:</strong> 
+            <span class="${email.securityStatus === 'safe' ? 'security-pass' : 'security-fail'}">
+              ${email.securityStatus === 'safe' ? 'SAFE' : 'SUSPICIOUS'}
+            </span>
+          </p>
+          <p><strong>Snippet:</strong> ${email.snippet}</p>
+        </div>
+        
+        <div class="security-details">
+          <h4>Security Details</h4>
+          <div class="security-item ${email.securityDetails.spf.pass ? 'security-pass' : 'security-fail'}">
+            <strong>SPF:</strong> ${email.securityDetails.spf.details}
           </div>
-          
-          <div class="security-details">
-            <h4>Security Details</h4>
-            <div class="security-item ${email.securityDetails.spf.pass ? 'security-pass' : 'security-fail'}">
-              <strong>SPF:</strong> ${email.securityDetails.spf.details}
-            </div>
-            <div class="security-item ${email.securityDetails.dkim.pass ? 'security-pass' : 'security-fail'}">
-              <strong>DKIM:</strong> ${email.securityDetails.dkim.details}
-            </div>
-            <div class="security-item ${email.securityDetails.dmarc.pass ? 'security-pass' : 'security-fail'}">
-              <strong>DMARC:</strong> ${email.securityDetails.dmarc.details}
-            </div>
-            ${email.securityDetails.urlCheck ? `
-            <div class="security-item ${email.securityDetails.urlCheck.pass ? 'security-pass' : 'security-fail'}">
-              <strong>URL Check:</strong> ${email.securityDetails.urlCheck.details}
-            </div>
-            ` : ''}
+          <div class="security-item ${email.securityDetails.dkim.pass ? 'security-pass' : 'security-fail'}">
+            <strong>DKIM:</strong> ${email.securityDetails.dkim.details}
           </div>
-          
-          ${email.urls && email.urls.length > 0 ? `
-          <div class="url-section">
-            <h4>Malicious URLs in this email (${email.urls.length})</h4>
-            <ul class="url-list">
-              ${email.urls.map(url => `<li class="url-item">${url}</li>`).join('')}
-            </ul>
+          <div class="security-item ${email.securityDetails.dmarc.pass ? 'security-pass' : 'security-fail'}">
+            <strong>DMARC:</strong> ${email.securityDetails.dmarc.details}
+          </div>
+          ${email.securityDetails.urlCheck ? `
+          <div class="security-item ${email.securityDetails.urlCheck.pass ? 'security-pass' : 'security-fail'}">
+            <strong>URL Check:</strong> ${email.securityDetails.urlCheck.details}
           </div>
           ` : ''}
-        `;
+          ${email.securityDetails.nlpCheck ? `
+          <div class="security-item ${email.securityDetails.nlpCheck.pass ? 'security-pass' : 'security-fail'}">
+            <strong>NLP Check:</strong> ${email.securityDetails.nlpCheck.details}
+          </div>
+          ` : ''}
+        </div>
         
+        ${email.urls && email.urls.length > 0 ? `
+        <div class="url-section">
+          <h4>Malicious URLs in this email (${email.urls.length})</h4>
+          <ul class="url-list">
+            ${email.urls.map(url => `<li class="url-item">${url}</li>`).join('')}
+          </ul>
+        </div>
+        ` : ''}
+      `;
+              
         // Show modal
         modal.style.display = 'block';
       });
@@ -525,21 +530,118 @@ document.addEventListener("DOMContentLoaded", function () {
 },
 
 
-    analysis: async () => {
-      contentTitle.innerText = "Analysis";
-      contentBody.innerHTML = "<p>Loading...</p>";
-      try {
-        const response = await fetch("http://localhost:4000/settings/analysis");
-        const data = await response.json();
-        contentBody.innerHTML = `
-          <p>Total Emails Scanned: ${data.totalEmailsScanned}</p>
-          <p>Suspicious Emails: ${data.suspiciousEmails}</p>
-          <p>Trusted Emails: ${data.trustedEmails}</p>
-        `;
-      } catch (error) {
-        contentBody.innerHTML = `<p>Error loading analysis data: ${error.message}</p>`;
+analysis: async () => {
+  contentTitle.innerText = "Analysis";
+  contentBody.innerHTML = "<p>Loading...</p>"; // Set loading state initially
+
+  try {
+      const authData = await getTokenAndUserId();
+      const googleId = authData.userId;
+
+      if (!googleId) { // Double check just in case getTokenAndUserId didn't throw
+           contentBody.innerHTML = "<p>Error: User Google ID not available. Please log in.</p>";
+           console.error("User Google ID is missing for analysis request after auth check.");
+           return;
       }
-    },
+
+      const response = await fetch("http://localhost:4000/settings/analysis", {
+          headers: { 'Authorization': googleId }
+      });
+
+      if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ message: `HTTP error! status: ${response.status}` }));
+          throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+          const total = data.totalEmailsScanned || 0; // Use 0 if null/undefined
+          const suspicious = data.suspiciousEmails || 0; // Use 0 if null/undefined
+          const nonSuspicious = total - suspicious;
+          const maliciousSenders = data.maliciousSenders || []; // Use empty array if null/undefined
+          const lastUpdated = data.lastUpdated ? new Date(data.lastUpdated).toLocaleString() : 'Never';
+
+          // --- Construct the HTML content ---
+          let htmlContent = `
+              <div class="analysis-container">
+                  <h2>Analysis Summary</h2>
+                  <div class="summary-and-chart-container">
+                      <div class="analysis-summary-text">
+                          <p><strong>Total Emails Scanned:</strong> ${total}</p>
+                          <p><strong>Suspicious Emails Detected:</strong> ${suspicious}</p>
+                          <p><strong>Last Updated:</strong> ${lastUpdated}</p>
+                      </div>
+                      <div class="analysis-chart-container">
+                          ${total > 0 ? '<canvas id="analysisPieChart"></canvas>' : '<p>No emails scanned yet to display chart.</p>'}
+                      </div>
+                  </div>
+
+                  <div class="malicious-senders-section">
+                      <h3>Known Malicious Senders (${maliciousSenders.length})</h3>
+                      ${maliciousSenders.length > 0
+                          ? `<ul class="malicious-senders-list">
+                               ${maliciousSenders.map(sender => `<li>${sender}</li>`).join('')}
+                             </ul>`
+                          : '<p>No malicious senders identified yet.</p>'
+                      }
+                  </div>
+              </div>
+          `;
+
+          contentBody.innerHTML = htmlContent; // Set the HTML first
+
+          // --- Create the Pie Chart (only if total > 0) ---
+          if (total > 0) {
+              const ctx = document.getElementById('analysisPieChart');
+              if (ctx) { // Ensure the canvas element exists
+                  new Chart(ctx, {
+                      type: 'pie',
+                      data: {
+                          labels: ['Safe/Other Emails', 'Suspicious Emails'],
+                          datasets: [{
+                              data: [nonSuspicious, suspicious],
+                              backgroundColor: [
+                                  'rgba(75, 192, 192, 0.6)', // Greenish for safe/other
+                                  'rgba(255, 99, 132, 0.6)'  // Reddish for suspicious
+                              ],
+                              borderColor: [
+                                  'rgba(75, 192, 192, 1)',
+                                  'rgba(255, 99, 132, 1)'
+                              ],
+                              borderWidth: 1
+                          }]
+                      },
+                      options: {
+                          responsive: true,
+                          maintainAspectRatio: false, // Allow more control over size
+                          plugins: {
+                              legend: {
+                                  position: 'top',
+                              },
+                              title: {
+                                  display: true,
+                                  text: 'Email Scan Distribution'
+                              }
+                          }
+                      }
+                  });
+              }
+          }
+          // --- End Create Pie Chart ---
+
+      } else {
+          // Backend returned success: false
+          contentBody.innerHTML = `<p>Failed to load analysis data: ${data.message || 'An unknown error occurred on the server.'}</p>`;
+          console.error("Backend reported failure for analysis:", data);
+      }
+
+  } catch (error) {
+      // Handle errors from getTokenAndUserId, fetch, or JSON parsing
+      contentBody.innerHTML = `<p>Error loading analysis data: ${error.message}</p>`;
+      console.error("Error in analysis process:", error);
+  }
+},
 
     "malicious-domains": async () => {
       contentTitle.innerText = "Malicious Domains";

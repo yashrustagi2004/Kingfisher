@@ -35,6 +35,7 @@
   ]
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self' http://localhost:3000; object-src 'self'"
-  }
+  "extension_pages": "script-src 'self'; object-src 'self';"
+}
+
 }
