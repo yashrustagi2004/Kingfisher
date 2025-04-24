@@ -135,7 +135,7 @@ function LoginComponent() {
     setTimeout(() => {
       notification.style.opacity = "0";
       setTimeout(() => document.body.removeChild(notification), 500);
-    }, 3000);
+    }, 1000);
   };
 
   return (
