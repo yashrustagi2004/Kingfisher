@@ -87,7 +87,6 @@ async function logTranslationIfNeeded(text, type, emailSubject) {
   }
 }
 
-
 // --- extractTextContent function remains the same ---
 function extractTextContent(part) {
     let content = '';
@@ -121,7 +120,6 @@ function extractTextContent(part) {
 
     return content;
 }
-
 
 // --- runNlpModel function remains the same ---
 async function runNlpModel(translatedText) {
@@ -174,6 +172,7 @@ exports.getGmailEmails = async (req, res) => {
 
   let lastCheckTimestampMs = 0;
   let existingResults = null;
+  let userEmail = null; // Declare variable to store user's email
 
   try {
     const settings = await UserSettings.findOne({ googleId }) ||
@@ -202,6 +201,15 @@ exports.getGmailEmails = async (req, res) => {
     oauth2Client.setCredentials({ access_token: token });
     const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
+    try {
+      const userInfoResponse = await gmail.users.getProfile({ userId: "me" });
+      userEmail = userInfoResponse.data.emailAddress.toLowerCase();
+      console.log(`[${googleId}] User email identified as: ${userEmail}`);
+    } catch (error) {
+      console.error(`[${googleId}] Failed to retrieve user email:`, error);
+      // Continue without user email - we'll just skip the self-sent email detection
+    }
+
     let query = "category:primary";
     if (lastCheckTimestampMs > 0) {
       const lastCheckTimestampSec = Math.floor(lastCheckTimestampMs / 1000);
@@ -210,6 +218,8 @@ exports.getGmailEmails = async (req, res) => {
     } else {
        console.log(`[${googleId}] No previous timestamp found, fetching recent primary emails.`);
     }
+
+    // yaha tak
 
     const [messagesRes, trustedDomainsDoc] = await Promise.all([
       gmail.users.messages.list({ userId: "me", maxResults: 50, q: query }),
@@ -256,8 +266,13 @@ exports.getGmailEmails = async (req, res) => {
 
       const headers = msg.payload.headers;
       const fromHeader = headers.find((h) => h.name === "From")?.value || "";
+      // Extract sender's email from the From header
+      const senderEmail = fromHeader.match(/[\w\.-]+@[\w\.-]+\.\w+/)?.[0]?.toLowerCase() || "";
       const domainMatch = fromHeader.match(/@([^>\s]+)/);
       const senderDomain = domainMatch ? domainMatch[1].toLowerCase() : null;
+
+      // Check if this is a self-sent email (only if we have the user's email)
+      const isSelfSent = userEmail && senderEmail === userEmail;
 
       if (senderDomain && trustedDomains.includes(senderDomain)) {
         console.log(`[${googleId}] Skipping email from trusted domain: ${senderDomain}`);
@@ -267,7 +282,7 @@ exports.getGmailEmails = async (req, res) => {
       const subject = headers.find((h) => h.name === "Subject")?.value || "(No Subject)";
       const dateHeader = headers.find((h) => h.name === "Date")?.value;
       const snippet = msg.snippet || "";
-      const securityStatusInfo = parseAuthenticationHeadersOptimized(headers); // Renamed variable
+      const securityStatusInfo = parseAuthenticationHeadersOptimized(headers);
       const urls = extractUrlsFromEmail(msg);
       const textContent = extractTextContent(msg.payload);
       const translatedSnippet = await logTranslationIfNeeded(snippet, "Snippet", subject);
@@ -276,12 +291,22 @@ exports.getGmailEmails = async (req, res) => {
       const { confidence, prediction } = await runNlpModel(combinedText);
       const isHighConfidencePhishing = prediction === 1 && confidence >= 0.9;
 
-      let finalSecurityStatus = securityStatusInfo.status; // Use info from renamed variable
+      let finalSecurityStatus = securityStatusInfo.status;
       if (isHighConfidencePhishing) {
           finalSecurityStatus = 'malicious';
       }
+      
+      // Handle self-sent emails
+      if (isSelfSent) {
+        console.log(`[${googleId}] Detected self-sent email: "${subject}"`);
+        // Override security status to safe for self-sent emails unless NLP model has high confidence it's phishing
+        if (!isHighConfidencePhishing) {
+          finalSecurityStatus = 'safe';
+        }
+      }
+
       const securityDetails = {
-          ...securityStatusInfo.details, // Use info from renamed variable
+          ...securityStatusInfo.details,
           nlpCheck: {
               pass: prediction !== 1,
               details: prediction === 1
@@ -290,23 +315,32 @@ exports.getGmailEmails = async (req, res) => {
           }
       };
 
-      // Add to the list of emails processed *in this specific run*
+      // Add self-sent email explanation to security details if applicable
+      if (isSelfSent) {
+        securityDetails.selfSent = {
+          pass: true,
+          details: "This email was sent from your own account to yourself. Authentication headers may be missing or incomplete for self-sent emails, which can trigger security warnings."
+        };
+      }
+
+      // Add to the list of emails processed in this specific run
       newlyProcessedEmails.push({
         subject,
-        from: fromHeader, // Keep the full from header string
+        from: fromHeader,
         date: dateHeader,
         internalDate: internalDateMs,
         messageId: messageId,
         snippet,
-        securityStatus: finalSecurityStatus, // This is the status BEFORE URL check
-        securityDetails, // Details BEFORE URL check
+        securityStatus: finalSecurityStatus,
+        securityDetails,
         urls,
-        // Store NLP results if needed later
         nlpConfidence: confidence,
         nlpPrediction: prediction,
-        isHighConfidencePhishing: isHighConfidencePhishing
+        isHighConfidencePhishing: isHighConfidencePhishing,
+        isSelfSent: isSelfSent // Store this flag for potential use later
       });
-    } // End processing loop for new emails
+    }
+    // End processing loop for new emails
 
     // --- Check URLs (modifies securityStatus/details IN PLACE if malicious URL found) ---
     const checkedNewEmails = await checkUrlsAgainstDatabase(newlyProcessedEmails); // Note: checkUrlsAgainstDatabase modifies securityStatus if URLs are bad
@@ -656,8 +690,9 @@ function extractUrlsFromEmail(email) {
 }
 
 // --- checkUrlsAgainstDatabase function remains the same ---
+// --- checkUrlsAgainstDatabase function modified to only store malicious URLs ---
 async function checkUrlsAgainstDatabase(emails) {
-  // Load CSV database of malicious URLs (consider caching this if it's large/static)
+  // Load CSV database of malicious URLs
   let maliciousUrls = [];
   try {
       maliciousUrls = await loadMaliciousUrlDatabase();
@@ -666,6 +701,7 @@ async function checkUrlsAgainstDatabase(emails) {
       // Return emails unmodified if DB fails to load
       return emails.map(email => ({
           ...email,
+          urls: [], // Clear all URLs since we can't check them
           securityDetails: {
               ...email.securityDetails,
               urlCheck: {
@@ -676,12 +712,9 @@ async function checkUrlsAgainstDatabase(emails) {
       }));
   }
 
-
   if (maliciousUrls.length === 0) {
     console.warn("Malicious URL database is empty or failed to load. URL checks might not be effective.");
-    // Proceed, but checks won't find anything
   }
-
 
   // Check each email's URLs against the database
   return emails.map(email => {
@@ -695,10 +728,7 @@ async function checkUrlsAgainstDatabase(emails) {
         const isMalicious = maliciousUrls.some(entry => {
            if (!entry.url || typeof entry.url !== 'string') return false; // Skip invalid entries
            // Check if the email URL *includes* the pattern from the database.
-           // Be cautious: "google.com" in DB would flag "maps.google.com"
-           // A more precise check might involve domain parsing or exact match depending on DB content.
-           // Assuming the DB contains specific malicious URLs or base domains to block:
-           return url.includes(entry.url.trim()) && // Trim whitespace from DB entry
+           return url.includes(entry.url.trim()) && 
                   (entry.type === 'phishing' || entry.type === 'defacement' || entry.type === 'malware');
         });
 
@@ -716,16 +746,14 @@ async function checkUrlsAgainstDatabase(emails) {
 
     const updatedEmail = {
       ...email,
-      // Optional: Decide whether to keep all URLs or only malicious ones in the final object
-      // urls: detectedMaliciousUrls, // Keep only malicious ones
-      urls: email.urls, // Keep all original URLs for context
+      // Only store malicious URLs instead of all URLs
+      urls: detectedMaliciousUrls, // This is the key change
       securityDetails: {
         ...email.securityDetails,
         urlCheck: {
           pass: pass,
           details: details,
-          // Optionally include the list of detected malicious URLs here
-          maliciousUrlsDetected: detectedMaliciousUrls
+          maliciousUrlsDetected: detectedMaliciousUrls.length // Just store the count for reference
         }
       }
     };
