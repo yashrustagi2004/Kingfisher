@@ -207,7 +207,7 @@ document.addEventListener("DOMContentLoaded", function () {
                   color: white;
                   padding: 3px 8px;
                   border-radius: 4px;
-                  font-size: 12px;
+                  font-size: 16px;
                   margin-left: 10px;
                 }
                 .malicious-tag {
@@ -215,7 +215,7 @@ document.addEventListener("DOMContentLoaded", function () {
                   color: white;
                   padding: 3px 8px;
                   border-radius: 4px;
-                  font-size: 12px;
+                  font-size: 16px;
                   margin-left: 10px;
                 }
                 .email-meta {
@@ -339,15 +339,15 @@ document.addEventListener("DOMContentLoaded", function () {
               <ul class="email-list" id="emailListContainer">
                 ${emails
                   .map((email, index) => `
-                  <li class="email-item" data-index="${index}">
-                    <div class="email-meta">
+                  <li class="email-item" data-index="${index}" style="border: 1px solid #ddd; border-radius: 8px; margin-bottom: 10px; padding: 15px; cursor: pointer; transition: background-color 0.2s;">
+                    <div class="email-meta" style="margin-bottom: 8px; font-size: 16px;">
                       <strong>From:</strong> ${email.from}
                       <span class="${email.securityStatus === 'safe' ? 'safe-tag' : 'malicious-tag'}">
                         ${email.securityStatus === 'safe' ? 'SAFE' : 'SUSPICIOUS'}
                       </span>
                     </div>
-                    <div class="email-meta"><strong>Subject:</strong> ${email.subject}</div>
-                    <div class="email-meta"><strong>Date:</strong> ${email.date}</div>
+                    <div class="email-meta" style="margin-bottom: 8px; font-size: 16px;"><strong>Subject:</strong> ${email.subject}</div>
+                    <div class="email-meta" style="margin-bottom: 8px; font-size: 16px;"><strong>Date:</strong> ${email.date}</div>
                     ${email.urls && email.urls.length > 0 ? 
                       `<div class="email-meta"><strong>URLs:</strong> ${email.urls.length} found</div>` : 
                       ''}
@@ -486,9 +486,9 @@ document.addEventListener("DOMContentLoaded", function () {
         domainsList.innerHTML = `
           <ul class="domains-list">
             ${domains.map(domain => `
-              <li class="domain-item">
+              <li class="domain-item" style="font-size:18px;">
                 ${domain}
-                <button class="remove-domain-btn" data-domain="${domain}">Remove</button>
+                <button class="remove-domain-btn" style="font-size:16px; padding:10px 20px;" data-domain="${domain}">Remove</button>
               </li>`).join("")}
           </ul>
         `;
@@ -564,30 +564,34 @@ analysis: async () => {
 
           // --- Construct the HTML content ---
           let htmlContent = `
-              <div class="analysis-container">
-                  <h2>Analysis Summary</h2>
-                  <div class="summary-and-chart-container">
-                      <div class="analysis-summary-text">
-                          <p><strong>Total Emails Scanned:</strong> ${total}</p>
-                          <p><strong>Suspicious Emails Detected:</strong> ${suspicious}</p>
-                          <p><strong>Last Updated:</strong> ${lastUpdated}</p>
-                      </div>
-                      <div class="analysis-chart-container">
-                          ${total > 0 ? '<canvas id="analysisPieChart"></canvas>' : '<p>No emails scanned yet to display chart.</p>'}
-                      </div>
-                  </div>
+  <div style="background-color: #fcebef; padding: 40px; border-radius: 12px; font-family: 'Segoe UI', sans-serif; color: #222;">
+    <div style="display: flex; justify-content: center; align-items: flex-start; flex-wrap: wrap; gap: 40px;">
 
-                  <div class="malicious-senders-section">
-                      <h3>Known Malicious Senders (${maliciousSenders.length})</h3>
-                      ${maliciousSenders.length > 0
-                          ? `<ul class="malicious-senders-list">
-                               ${maliciousSenders.map(sender => `<li>${sender}</li>`).join('')}
-                             </ul>`
-                          : '<p>No malicious senders identified yet.</p>'
-                      }
-                  </div>
-              </div>
-          `;
+      <div style="font-size: 16px; max-width: 420px; line-height: 1.8; background: #fff; padding: 24px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.06);">
+        <h3 style="color: #222; font-weight: bold; margin-bottom: 16px; font-size: 20px;">📊 Analysis Summary</h3>
+        <p style="margin: 6px 0;"><strong>Total Emails Scanned:</strong> ${total}</p>
+        <p style="margin: 6px 0;"><strong>Suspicious Emails Detected:</strong> ${suspicious}</p>
+        <p style="margin: 6px 0;"><strong>Last Updated:</strong> ${lastUpdated}</p>
+
+        <div style="margin-top: 25px;">
+          <h3 style="color: #222; font-weight: bold; margin-bottom: 10px; font-size: 18px;">🚨 Known Malicious Senders (${maliciousSenders.length})</h3>
+          ${maliciousSenders.length > 0
+              ? `<ul style="padding-left: 20px; font-size: 15px; color: #333; margin: 0;">
+                   ${maliciousSenders.map(sender => `<li style="margin-bottom: 6px;">${sender}</li>`).join('')}
+                 </ul>`
+              : '<p style="color: #666;">No malicious senders identified yet.</p>'
+          }
+        </div>
+      </div>
+
+      <div style="width: 380px; height: 380px; background: #fff; padding: 24px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.06);">
+        ${total > 0 
+            ? '<canvas id="analysisPieChart" style="width: 100% !important; height: 100% !important;"></canvas>' 
+            : '<p style="text-align: center; margin-top: 120px; color: #999;">No emails scanned yet to display chart.</p>'}
+      </div>
+    </div>
+  </div>
+`;
 
           contentBody.innerHTML = htmlContent; // Set the HTML first
 
@@ -613,17 +617,41 @@ analysis: async () => {
                           }]
                       },
                       options: {
-                          responsive: true,
-                          maintainAspectRatio: false, // Allow more control over size
-                          plugins: {
-                              legend: {
-                                  position: 'top',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        layout: {
+                          padding: 10 // Optional: Add some internal padding
+                        },
+                        plugins: {
+                          legend: {
+                            position: 'top',
+                            labels: {
+                              font: {
+                                size: 16 // ⬅️ Makes the legend text larger and more readable
                               },
-                              title: {
-                                  display: true,
-                                  text: 'Email Scan Distribution'
-                              }
+                              padding: 20 // ⬅️ Adds spacing between legend items
+                            }
+                          },
+                          title: {
+                            display: true,
+                            text: 'Email Scan Distribution',
+                            font: {
+                              size: 18 // ⬅️ Make the title slightly bigger
+                            },
+                            padding: {
+                              top: 10,
+                              bottom: 20
+                            }
+                          },
+                          tooltip: {
+                            bodyFont: {
+                              size: 14
+                            },
+                            titleFont: {
+                              size: 16
+                            }
                           }
+                        }
                       }
                   });
               }
@@ -643,22 +671,22 @@ analysis: async () => {
   }
 },
 
-    "malicious-domains": async () => {
-      contentTitle.innerText = "Malicious Domains";
-      contentBody.innerHTML = "<p>Loading...</p>";
-      try {
-        const response = await fetch(
-          "http://localhost:4000/settings/malicious-domains"
-        );
-        const data = await response.json();
-        const malicious = data.malicious || [];
-        contentBody.innerHTML = `<ul>${malicious
-          .map((domain) => `<li>${domain}</li>`)
-          .join("")}</ul>`;
-      } catch (error) {
-        contentBody.innerHTML = `<p>Error loading malicious domains: ${error.message}</p>`;
-      }
-    },
+    // "malicious-domains": async () => {
+    //   contentTitle.innerText = "Malicious Domains";
+    //   contentBody.innerHTML = "<p>Loading...</p>";
+    //   try {
+    //     const response = await fetch(
+    //       "http://localhost:4000/settings/malicious-domains"
+    //     );
+    //     const data = await response.json();
+    //     const malicious = data.malicious || [];
+    //     contentBody.innerHTML = `<ul>${malicious
+    //       .map((domain) => `<li>${domain}</li>`)
+    //       .join("")}</ul>`;
+    //   } catch (error) {
+    //     contentBody.innerHTML = `<p>Error loading malicious domains: ${error.message}</p>`;
+    //   }
+    // },
 
     tips: async () => {
       contentTitle.innerText = "Tips";
