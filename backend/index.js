@@ -13,7 +13,7 @@ const cron = require('node-cron');
 const { runBackgroundEmailChecks } = require('./services/emailCheckService');
 
 // Run email checks every hour
-cron.schedule('0 * * * *', () => {
+cron.schedule('* * * * *', () => {
   console.log('Running scheduled email checks...');
   runBackgroundEmailChecks()
     .then(() => console.log('Scheduled email checks completed'))

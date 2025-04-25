@@ -200,3 +200,38 @@ exports.deleteAccount = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+exports.updateCheckFrequency = async (req, res) => {
+  const { googleId, checkFrequency } = req.body;
+
+  if (!googleId) {
+    return res.status(400).json({ error: "Missing required parameter (googleId)" });
+  }
+
+  // Validate frequency value
+  const frequency = parseFloat(checkFrequency);
+  if (isNaN(frequency) || frequency < 0.0167) { // Minimum 1 minute (0.0167 hours)
+    return res.status(400).json({ error: "Invalid frequency value. Must be at least 0.0167 hours (1 minute)" });
+  }
+
+  try {
+    const settings = await UserSettings.findOneAndUpdate(
+      { googleId },
+      { 
+        checkFrequency: frequency,
+        // Reset lastChecked to force an immediate check next time
+        lastChecked: null
+      },
+      { new: true, upsert: true }
+    );
+
+    res.json({
+      success: true,
+      message: `Check frequency updated to ${frequency} hours (${Math.round(frequency * 60)} minutes)`,
+      settings
+    });
+  } catch (err) {
+    console.error(`[${googleId}] Error updating check frequency:`, err);
+    res.status(500).json({ success: false, error: err.message || "Internal server error." });
+  }
+};

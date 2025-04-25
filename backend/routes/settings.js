@@ -21,4 +21,6 @@ router.get("/about-us", settingsController.getAboutUs)
 // Delete Account Route
 router.delete("/delete-account/:googleId", settingsController.deleteAccount);
 
+router.post("/update-frequency", settingsController.updateCheckFrequency);
+
 module.exports = router;

@@ -18,17 +18,26 @@ async function shouldRefreshEmails(googleId, forceRefresh = false) {
     const settings = await UserSettings.findOne({ googleId });
     if (!settings) return true; // No settings, treat as needing refresh
 
-    // If auto-check is disabled, always refresh (unless explicitly cached results are requested later)
-    // This behavior might need adjustment depending on exact UX desired for disabled auto-check
+    // If auto-check is disabled, always refresh when manually requested
     if (!settings.autoCheckEmails) return true;
 
     // Check if we've passed the refresh interval
     if (!settings.lastChecked) return true; // Never checked before
 
     const now = new Date();
-    const hoursSinceLastCheck = (now - settings.lastChecked) / (1000 * 60 * 60);
-
-    return hoursSinceLastCheck >= settings.checkFrequency;
+    
+    // Calculate time difference in minutes instead of hours for finer granularity
+    const minutesSinceLastCheck = (now - settings.lastChecked) / (1000 * 60);
+    
+    // Convert checkFrequency from hours to minutes
+    const frequencyMinutes = settings.checkFrequency * 60;
+    
+    // For minute-based cron, use smaller minimum threshold (1 minute)
+    const needsRefresh = minutesSinceLastCheck >= Math.max(1, frequencyMinutes);
+    
+    console.log(`[${googleId}] Minutes since last check: ${minutesSinceLastCheck.toFixed(2)}, frequency (mins): ${frequencyMinutes}, needs refresh: ${needsRefresh}`);
+    
+    return needsRefresh;
   } catch (error) {
     console.error("Error checking refresh status:", error);
     return true; // Refresh on error to be safe

@@ -17,7 +17,7 @@ const userSettingsSchema = new mongoose.Schema({
   },
   checkFrequency: {
     type: Number, // Hours between checks
-    default: 1 
+    default: 0.0167
   }
 });
 
