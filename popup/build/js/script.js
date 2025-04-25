@@ -148,7 +148,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   const routes = {
     home: async () => {
-      contentTitle.innerText = "Gmail Emails";
+      contentTitle.innerText = "Emails";
       contentBody.innerHTML = "<p>Loading your latest Gmail messages...</p>";
       
       try {
@@ -519,7 +519,7 @@ document.addEventListener("DOMContentLoaded", function () {
           });
         });
       } else {
-        domainsList.innerHTML = "<p>No trusted domains found.</p>";
+       domainsList.innerHTML = '<p style="font-size:16px;">No trusted domains found.</p>';
       }
     } catch (error) {
       domainsList.innerHTML = `<p>Error loading trusted domains: ${error.message}</p>`;
@@ -530,146 +530,146 @@ document.addEventListener("DOMContentLoaded", function () {
 },
 
 
-analysis: async () => {
-  contentTitle.innerText = "Analysis";
-  contentBody.innerHTML = "<p>Loading...</p>"; // Set loading state initially
+    analysis: async () => {
+      contentTitle.innerText = "Analysis";
+      contentBody.innerHTML = "<p>Loading...</p>"; // Set loading state initially
 
-  try {
-      const authData = await getTokenAndUserId();
-      const googleId = authData.userId;
+      try {
+          const authData = await getTokenAndUserId();
+          const googleId = authData.userId;
 
-      if (!googleId) { // Double check just in case getTokenAndUserId didn't throw
-           contentBody.innerHTML = "<p>Error: User Google ID not available. Please log in.</p>";
-           console.error("User Google ID is missing for analysis request after auth check.");
-           return;
-      }
-
-      const response = await fetch("http://localhost:4000/settings/analysis", {
-          headers: { 'Authorization': googleId }
-      });
-
-      if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ message: `HTTP error! status: ${response.status}` }));
-          throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (data.success) {
-          const total = data.totalEmailsScanned || 0; // Use 0 if null/undefined
-          const suspicious = data.suspiciousEmails || 0; // Use 0 if null/undefined
-          const nonSuspicious = total - suspicious;
-          const maliciousSenders = data.maliciousSenders || []; // Use empty array if null/undefined
-          const lastUpdated = data.lastUpdated ? new Date(data.lastUpdated).toLocaleString() : 'Never';
-
-          // --- Construct the HTML content ---
-          let htmlContent = `
-  <div style="background-color: #fcebef; padding: 40px; border-radius: 12px; font-family: 'Segoe UI', sans-serif; color: #222;">
-    <div style="display: flex; justify-content: center; align-items: flex-start; flex-wrap: wrap; gap: 40px;">
-
-      <div style="font-size: 16px; max-width: 420px; line-height: 1.8; background: #fff; padding: 24px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.06);">
-        <h3 style="color: #222; font-weight: bold; margin-bottom: 16px; font-size: 20px;">📊 Analysis Summary</h3>
-        <p style="margin: 6px 0;"><strong>Total Emails Scanned:</strong> ${total}</p>
-        <p style="margin: 6px 0;"><strong>Suspicious Emails Detected:</strong> ${suspicious}</p>
-        <p style="margin: 6px 0;"><strong>Last Updated:</strong> ${lastUpdated}</p>
-
-        <div style="margin-top: 25px;">
-          <h3 style="color: #222; font-weight: bold; margin-bottom: 10px; font-size: 18px;">🚨 Known Malicious Senders (${maliciousSenders.length})</h3>
-          ${maliciousSenders.length > 0
-              ? `<ul style="padding-left: 20px; font-size: 15px; color: #333; margin: 0;">
-                   ${maliciousSenders.map(sender => `<li style="margin-bottom: 6px;">${sender}</li>`).join('')}
-                 </ul>`
-              : '<p style="color: #666;">No malicious senders identified yet.</p>'
+          if (!googleId) { // Double check just in case getTokenAndUserId didn't throw
+              contentBody.innerHTML = "<p>Error: User Google ID not available. Please log in.</p>";
+              console.error("User Google ID is missing for analysis request after auth check.");
+              return;
           }
+
+          const response = await fetch("http://localhost:4000/settings/analysis", {
+              headers: { 'Authorization': googleId }
+          });
+
+          if (!response.ok) {
+              const errorData = await response.json().catch(() => ({ message: `HTTP error! status: ${response.status}` }));
+              throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+
+          if (data.success) {
+              const total = data.totalEmailsScanned || 0; // Use 0 if null/undefined
+              const suspicious = data.suspiciousEmails || 0; // Use 0 if null/undefined
+              const nonSuspicious = total - suspicious;
+              const maliciousSenders = data.maliciousSenders || []; // Use empty array if null/undefined
+              const lastUpdated = data.lastUpdated ? new Date(data.lastUpdated).toLocaleString() : 'Never';
+
+              // --- Construct the HTML content ---
+              let htmlContent = `
+      <div style="background-color: #fcebef; padding: 40px; border-radius: 12px; font-family: 'Segoe UI', sans-serif; color: #222;">
+        <div style="display: flex; justify-content: center; align-items: flex-start; flex-wrap: wrap; gap: 40px;">
+
+          <div style="font-size: 16px; max-width: 420px; line-height: 1.8; background: #fff; padding: 24px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.06);">
+            <h3 style="color: #222; font-weight: bold; margin-bottom: 16px; font-size: 20px;">📊 Analysis Summary</h3>
+            <p style="margin: 6px 0;"><strong>Total Emails Scanned:</strong> ${total}</p>
+            <p style="margin: 6px 0;"><strong>Suspicious Emails Detected:</strong> ${suspicious}</p>
+            <p style="margin: 6px 0;"><strong>Last Updated:</strong> ${lastUpdated}</p>
+
+            <div style="margin-top: 25px;">
+              <h3 style="color: #222; font-weight: bold; margin-bottom: 10px; font-size: 18px;">🚨 Known Malicious Senders (${maliciousSenders.length})</h3>
+              ${maliciousSenders.length > 0
+                  ? `<ul style="padding-left: 20px; font-size: 15px; color: #333; margin: 0;">
+                      ${maliciousSenders.map(sender => `<li style="margin-bottom: 6px;">${sender}</li>`).join('')}
+                    </ul>`
+                  : '<p style="color: #666;">No malicious senders identified yet.</p>'
+              }
+            </div>
+          </div>
+
+          <div style="width: 380px; height: 380px; background: #fff; padding: 24px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.06);">
+            ${total > 0 
+                ? '<canvas id="analysisPieChart" style="width: 100% !important; height: 100% !important;"></canvas>' 
+                : '<p style="text-align: center; margin-top: 120px; color: #999;">No emails scanned yet to display chart.</p>'}
+          </div>
         </div>
       </div>
+    `;
 
-      <div style="width: 380px; height: 380px; background: #fff; padding: 24px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.06);">
-        ${total > 0 
-            ? '<canvas id="analysisPieChart" style="width: 100% !important; height: 100% !important;"></canvas>' 
-            : '<p style="text-align: center; margin-top: 120px; color: #999;">No emails scanned yet to display chart.</p>'}
-      </div>
-    </div>
-  </div>
-`;
+              contentBody.innerHTML = htmlContent; // Set the HTML first
 
-          contentBody.innerHTML = htmlContent; // Set the HTML first
-
-          // --- Create the Pie Chart (only if total > 0) ---
-          if (total > 0) {
-              const ctx = document.getElementById('analysisPieChart');
-              if (ctx) { // Ensure the canvas element exists
-                  new Chart(ctx, {
-                      type: 'pie',
-                      data: {
-                          labels: ['Safe/Other Emails', 'Suspicious Emails'],
-                          datasets: [{
-                              data: [nonSuspicious, suspicious],
-                              backgroundColor: [
-                                  'rgba(75, 192, 192, 0.6)', // Greenish for safe/other
-                                  'rgba(255, 99, 132, 0.6)'  // Reddish for suspicious
-                              ],
-                              borderColor: [
-                                  'rgba(75, 192, 192, 1)',
-                                  'rgba(255, 99, 132, 1)'
-                              ],
-                              borderWidth: 1
-                          }]
-                      },
-                      options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        layout: {
-                          padding: 10 // Optional: Add some internal padding
-                        },
-                        plugins: {
-                          legend: {
-                            position: 'top',
-                            labels: {
-                              font: {
-                                size: 16 // ⬅️ Makes the legend text larger and more readable
+              // --- Create the Pie Chart (only if total > 0) ---
+              if (total > 0) {
+                  const ctx = document.getElementById('analysisPieChart');
+                  if (ctx) { // Ensure the canvas element exists
+                      new Chart(ctx, {
+                          type: 'pie',
+                          data: {
+                              labels: ['Safe/Other Emails', 'Suspicious Emails'],
+                              datasets: [{
+                                  data: [nonSuspicious, suspicious],
+                                  backgroundColor: [
+                                      'rgba(75, 192, 192, 0.6)', // Greenish for safe/other
+                                      'rgba(255, 99, 132, 0.6)'  // Reddish for suspicious
+                                  ],
+                                  borderColor: [
+                                      'rgba(75, 192, 192, 1)',
+                                      'rgba(255, 99, 132, 1)'
+                                  ],
+                                  borderWidth: 1
+                              }]
+                          },
+                          options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            layout: {
+                              padding: 10 // Optional: Add some internal padding
+                            },
+                            plugins: {
+                              legend: {
+                                position: 'top',
+                                labels: {
+                                  font: {
+                                    size: 16 // ⬅️ Makes the legend text larger and more readable
+                                  },
+                                  padding: 20 // ⬅️ Adds spacing between legend items
+                                }
                               },
-                              padding: 20 // ⬅️ Adds spacing between legend items
-                            }
-                          },
-                          title: {
-                            display: true,
-                            text: 'Email Scan Distribution',
-                            font: {
-                              size: 18 // ⬅️ Make the title slightly bigger
-                            },
-                            padding: {
-                              top: 10,
-                              bottom: 20
-                            }
-                          },
-                          tooltip: {
-                            bodyFont: {
-                              size: 14
-                            },
-                            titleFont: {
-                              size: 16
+                              title: {
+                                display: true,
+                                text: 'Email Scan Distribution',
+                                font: {
+                                  size: 18 // ⬅️ Make the title slightly bigger
+                                },
+                                padding: {
+                                  top: 10,
+                                  bottom: 20
+                                }
+                              },
+                              tooltip: {
+                                bodyFont: {
+                                  size: 14
+                                },
+                                titleFont: {
+                                  size: 16
+                                }
+                              }
                             }
                           }
-                        }
-                      }
-                  });
+                      });
+                  }
               }
+              // --- End Create Pie Chart ---
+
+          } else {
+              // Backend returned success: false
+              contentBody.innerHTML = `<p>Failed to load analysis data: ${data.message || 'An unknown error occurred on the server.'}</p>`;
+              console.error("Backend reported failure for analysis:", data);
           }
-          // --- End Create Pie Chart ---
 
-      } else {
-          // Backend returned success: false
-          contentBody.innerHTML = `<p>Failed to load analysis data: ${data.message || 'An unknown error occurred on the server.'}</p>`;
-          console.error("Backend reported failure for analysis:", data);
+      } catch (error) {
+          // Handle errors from getTokenAndUserId, fetch, or JSON parsing
+          contentBody.innerHTML = `<p>Error loading analysis data: ${error.message}</p>`;
+          console.error("Error in analysis process:", error);
       }
-
-  } catch (error) {
-      // Handle errors from getTokenAndUserId, fetch, or JSON parsing
-      contentBody.innerHTML = `<p>Error loading analysis data: ${error.message}</p>`;
-      console.error("Error in analysis process:", error);
-  }
-},
+    },
 
     // "malicious-domains": async () => {
     //   contentTitle.innerText = "Malicious Domains";
@@ -691,31 +691,129 @@ analysis: async () => {
     tips: async () => {
       contentTitle.innerText = "Tips";
       contentBody.innerHTML = "<p>Loading...</p>";
+      
       try {
         const response = await fetch("http://localhost:4000/settings/tips");
         const data = await response.json();
         const tips = data.tips || [];
-        contentBody.innerHTML = `<ul>${tips
-          .map((tip) => `<li>${tip}</li>`)
-          .join("")}</ul>`;
+        
+        contentBody.innerHTML = `
+          <div class="info-container">
+            <ul class="info-list">
+              ${tips.map((tip) => `<li class="info-item">${tip}</li>`).join("")}
+            </ul>
+          </div>
+          <style>
+            .info-container {
+              background-color: #f8f9fa;
+              border-radius: 12px;
+              border: 1px solid #e1e4e8;
+              padding: 20px;
+              margin: 15px 0;
+              box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            }
+            .info-list {
+              list-style-type: none;
+              padding: 0;
+              margin: 0;
+            }
+            .info-item {
+              padding: 12px 0;
+              border-bottom: 1px solid rgb(11, 12, 12);
+              font-size: 15px;
+              line-height: 1.5;
+              color: #24292e;
+            }
+            .info-item:last-child {
+              border-bottom: none;
+            }
+            .info-item:before {
+              content: "💡";
+              margin-right: 10px;
+            }
+          </style>
+        `;
       } catch (error) {
-        contentBody.innerHTML = `<p>Error loading tips: ${error.message}</p>`;
+        contentBody.innerHTML = `
+          <div class="error-container">
+            <p>Error loading tips: ${error.message}</p>
+          </div>
+          <style>
+            .error-container {
+              background-color: #ffeef0;
+              border-radius: 12px;
+              border: 1px solid #f1b0b7;
+              padding: 15px;
+              color: #d73a49;
+              font-size: 14px;
+            }
+          </style>
+        `;
       }
     },
 
     "about-us": async () => {
       contentTitle.innerText = "About Us";
-      contentBody.innerHTML = "<p>Loading...</p>";
-      try {
-        const response = await fetch("http://localhost:4000/settings/about-us");
-        const data = await response.json();
-        const about = data.about || [];
-        contentBody.innerHTML = `<ul>${about
-          .map((ab) => `<li>${ab}</li>`)
-          .join("")}</ul>`;
-      } catch (error) {
-        contentBody.innerHTML = `<p>Error loading tips: ${error.message}</p>`;
-      }
+        contentBody.innerHTML = "<p>Loading...</p>";
+        
+        try {
+          const response = await fetch("http://localhost:4000/settings/about-us");
+          const data = await response.json();
+          const about = data.about || [];
+          
+          contentBody.innerHTML = `
+            <div class="info-container">
+              <ul class="info-list">
+                ${about.map((ab) => `<li class="info-item">${ab}</li>`).join("")}
+              </ul>
+            </div>
+            <style>
+              .info-container {
+                background-color: #f8f9fa;
+                border-radius: 12px;
+                border: 1px solid #e1e4e8;
+                padding: 20px;
+                margin: 15px 0;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+              }
+              .info-list {
+                list-style-type: none;
+                padding: 0;
+                margin: 0;
+              }
+              .info-item {
+                padding: 12px 0;
+                border-bottom: 1px solid rgb(11, 12, 12);
+                font-size: 15px;
+                line-height: 1.5;
+                color: #24292e;
+              }
+              .info-item:last-child {
+                border-bottom: none;
+              }
+              .info-item:before {
+                content: "✨";
+                margin-right: 10px;
+              }
+            </style>
+          `;
+        } catch (error) {
+          contentBody.innerHTML = `
+            <div class="error-container">
+              <p>Error loading about us information: ${error.message}</p>
+            </div>
+            <style>
+              .error-container {
+                background-color: #ffeef0;
+                border-radius: 12px;
+                border: 1px solid #f1b0b7;
+                padding: 15px;
+                color: #d73a49;
+                font-size: 14px;
+              }
+            </style>
+          `;
+        }
     },
     "delete-account": async () => {
   if (
