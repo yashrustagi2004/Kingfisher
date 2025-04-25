@@ -145,19 +145,31 @@ exports.getMaliciousDomains = (req, res) => {
 
 exports.getTips = (req, res) => {
   const tips = [
-    "Never click on suspicious links.",
-    "Verify sender email addresses.",
-    "Use two-factor authentication.",
+    "Think before you click — avoid links or attachments from unknown or unexpected sources.",
+    "Double-check the sender's email address, especially for messages that request sensitive information.",
+    "Protect your accounts with two-factor authentication (2FA) wherever possible.",
+    "Keep your operating system, browser, and antivirus software regularly updated to guard against known threats.",
+    "Never share personal information like passwords, PINs, or OTPs through email or over the phone.",
+    "Use strong, unique passwords for every account — and consider using a reputable password manager.",
+    "Watch out for emails with urgent, threatening, or emotional language — it’s a common phishing tactic.",
+    "Hover over links to preview URLs before clicking, and avoid shortened or suspicious-looking links.",
+    "Report suspicious emails to your IT team or email provider — helping others stay safe too.",
   ];
   return res.json({ tips });
 };
 
 exports.getAboutUs = (req, res) => {
   const about = [
-    "We are kingfisher.",
-    "We do anti fishing"
+    "Welcome to Kingfisher — your trusted ally in the fight against phishing threats.",
+    "Our mission is to create a safer digital world by empowering users with awareness and equipping systems with intelligent, cutting-edge technology.",
+    "Phishing attacks continue to evolve, using deceptive emails to trick individuals into revealing sensitive information like passwords, financial credentials, and personal data.",
+    "Traditional rule-based systems often fall short in identifying these sophisticated tactics.",
+    "To tackle this, Kingfisher is developing an advanced phishing email detection system powered by Natural Language Processing (NLP) and Machine Learning.",
+    "Our solution intelligently analyzes email content, identifies subtle patterns and red flags, and accurately classifies emails as legitimate or malicious.",
+    "By reducing false positives and improving detection accuracy, we aim to strengthen email security and protect users from ever-changing phishing attacks.",
+    "At Kingfisher, we believe that a secure inbox is the first step to a secure digital life."
   ];
-  return res.json({ about })
+  return res.json({ about });
 };
 
 exports.deleteAccount = async (req, res) => {
