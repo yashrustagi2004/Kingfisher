@@ -11,8 +11,9 @@ const axios = require('axios');
 
 // --- shouldRefreshEmails function remains the same ---
 async function shouldRefreshEmails(googleId, forceRefresh = false) {
-  // If force refresh is requested, skip all other checks
-  if (forceRefresh) return true;
+  // We'll handle force refresh differently now - returning true means fetch from Gmail
+  // False means either use cached result or fetch from database directly
+  if (forceRefresh) return false; // Don't refresh from Gmail when forceRefresh is true
 
   try {
     const settings = await UserSettings.findOne({ googleId });
@@ -188,6 +189,20 @@ exports.getGmailEmails = async (req, res) => {
                     await new UserSettings({ googleId }).save();
 
     existingResults = await EmailResult.findOne({ googleId }).sort({ lastUpdated: -1 }).limit(1);
+
+    // New special case for forceRefresh
+    if (forceRefresh && existingResults) {
+      console.log(`[${googleId}] Force refresh requested. Returning latest results from database directly.`);
+      return res.json({
+        success: true,
+        emails: existingResults.emails || [],
+        fromCache: false, // Not technically from cache since we're deliberately fetching from DB
+        fromDbRefresh: true, // Add a flag to indicate this came from a DB refresh
+        lastUpdated: existingResults.lastUpdated,
+        lastEmailTimestamp: existingResults.lastEmailTimestamp
+      });
+    }
+    
     if (existingResults && existingResults.lastEmailTimestamp) {
       lastCheckTimestampMs = existingResults.lastEmailTimestamp;
     }
