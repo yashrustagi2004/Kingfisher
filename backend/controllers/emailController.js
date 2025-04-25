@@ -41,7 +41,7 @@ async function logTranslationIfNeeded(text, type, emailSubject) {
 
   try {
     // NOTE: Consider adding error handling and potential fallback if the translation service is down.
-    const res = await fetch("http://localhost:3000/translate", { // Ensure this endpoint is correct and running
+    const res = await fetch("http://translator:5000/translate", { // Ensure this endpoint is correct and running
       method: "POST",
       body: JSON.stringify({
         q: text,
@@ -129,7 +129,7 @@ async function runNlpModel(translatedText) {
   }
   try {
     // Ensure the NLP service endpoint is correct and running
-    const response = await axios.post('http://localhost:5000/predict', { // Use environment variable for URL
+    const response = await axios.post('http://nlp-container:5000/predict', { // Use environment variable for URL
       text: translatedText
     });
 

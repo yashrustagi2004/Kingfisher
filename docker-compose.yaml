@@ -1,0 +1,58 @@
+services:
+  backend:
+    build: ./backend
+    container_name: kingfisher-backend
+    ports:
+      - "4000:4000"
+    depends_on:
+      - mongo
+    env_file:
+      - ./backend/.env
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/kingfisher
+      - NLP_SERVICE_URL=http://nlp:5000
+      - TRANSLATOR_URL=http://translator:5000
+
+  mongo:
+    image: mongo:6
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  mongo-express:
+    image: mongo-express
+    container_name: mongo-express
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=mongo
+      - ME_CONFIG_MONGODB_PORT=27017
+      - ME_CONFIG_BASICAUTH_USERNAME=admin
+      - ME_CONFIG_BASICAUTH_PASSWORD=pass
+    depends_on:
+      - mongo
+    restart: unless-stopped
+
+  nlp:
+    image: ishikasahu2504/phishing:latest
+    container_name: nlp-container
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+  
+  translator:
+    image: libretranslate/libretranslate
+    container_name: translator
+    ports:
+      - "3000:5000"
+    volumes:
+      - libretranslate_data:/app/libretranslate/data
+    environment:
+      - LT_LOAD_ONLY=en,es,fr
+    restart: unless-stopped
+
+volumes:
+  libretranslate_data:
+  mongo_data:
