@@ -160,14 +160,7 @@ exports.getTips = (req, res) => {
 
 exports.getAboutUs = (req, res) => {
   const about = [
-    "Welcome to Kingfisher — your trusted ally in the fight against phishing threats.",
-    "Our mission is to create a safer digital world by empowering users with awareness and equipping systems with intelligent, cutting-edge technology.",
-    "Phishing attacks continue to evolve, using deceptive emails to trick individuals into revealing sensitive information like passwords, financial credentials, and personal data.",
-    "Traditional rule-based systems often fall short in identifying these sophisticated tactics.",
-    "To tackle this, Kingfisher is developing an advanced phishing email detection system powered by Natural Language Processing (NLP) and Machine Learning.",
-    "Our solution intelligently analyzes email content, identifies subtle patterns and red flags, and accurately classifies emails as legitimate or malicious.",
-    "By reducing false positives and improving detection accuracy, we aim to strengthen email security and protect users from ever-changing phishing attacks.",
-    "At Kingfisher, we believe that a secure inbox is the first step to a secure digital life."
+    "Kingfisher is committed to revolutionizing email security by leveraging the power of Natural Language Processing (NLP) and Machine Learning to combat phishing threats. As phishing attacks grow increasingly deceptive, traditional detection methods often fail to keep pace. Our intelligent system is designed to analyze email content deeply, uncover hidden patterns, and distinguish between legitimate and malicious messages with high precision. By minimizing false positives and enhancing detection accuracy, Kingfisher not only safeguards sensitive information but also empowers users to navigate the digital world with confidence. A secure inbox, after all, is the cornerstone of a secure digital life."
   ];
   return res.json({ about });
 };

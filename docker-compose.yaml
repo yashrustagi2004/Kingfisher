@@ -39,7 +39,7 @@ services:
     image: ishikasahu2504/phishing:latest
     container_name: nlp-container
     ports:
-      - "5000:5000"
+      - "6000:5000"
     restart: unless-stopped
   
   translator:

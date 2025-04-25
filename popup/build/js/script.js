@@ -792,8 +792,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 border-bottom: none;
               }
               .info-item:before {
-                content: "✨";
-                margin-right: 10px;
+                content: "";
               }
             </style>
           `;
