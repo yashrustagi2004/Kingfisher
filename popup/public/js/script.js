@@ -790,6 +790,7 @@ document.addEventListener("DOMContentLoaded", function () {
               }
               .info-item:last-child {
                 border-bottom: none;
+                
               }
               .info-item:before {
                 content: "";
