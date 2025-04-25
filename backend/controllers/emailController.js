@@ -180,155 +180,195 @@ exports.getGmailEmails = async (req, res) => {
   if (!token) return res.status(400).json({ error: "No token provided." });
   if (!googleId) return res.status(400).json({ error: "No Google ID provided" });
 
-  let lastCheckTimestampMs = 0;
+  let lastCheckTimestampMs = 0; // Timestamp in milliseconds
   let existingResults = null;
   let userEmail = null; // Declare variable to store user's email
 
   try {
+    // Find user settings or create default ones
     const settings = await UserSettings.findOne({ googleId }) ||
-                    await new UserSettings({ googleId }).save();
+                     await new UserSettings({ googleId }).save(); // Ensure settings exist
 
+    // Get the most recently saved results for this user
     existingResults = await EmailResult.findOne({ googleId }).sort({ lastUpdated: -1 }).limit(1);
 
-    // New special case for forceRefresh
+    // --- Handle forceRefresh ---
+    // If forceRefresh is true, we skip the 'shouldRefresh' logic and directly return DB results.
     if (forceRefresh && existingResults) {
       console.log(`[${googleId}] Force refresh requested. Returning latest results from database directly.`);
       return res.json({
         success: true,
         emails: existingResults.emails || [],
-        fromCache: false, // Not technically from cache since we're deliberately fetching from DB
-        fromDbRefresh: true, // Add a flag to indicate this came from a DB refresh
+        fromCache: false, // Not from Gmail cache
+        fromDbRefresh: true, // Indicate this came from a DB refresh triggered by force
         lastUpdated: existingResults.lastUpdated,
-        lastEmailTimestamp: existingResults.lastEmailTimestamp
+        lastEmailTimestamp: existingResults.lastEmailTimestamp // The timestamp of the latest email *in the DB*
       });
     }
-    
+
+    // Store the timestamp of the latest email processed in the *previous* run
     if (existingResults && existingResults.lastEmailTimestamp) {
       lastCheckTimestampMs = existingResults.lastEmailTimestamp;
+       console.log(`[${googleId}] Last processed email timestamp (ms): ${lastCheckTimestampMs} (${new Date(lastCheckTimestampMs).toISOString()})`);
+    } else {
+         console.log(`[${googleId}] No previous email timestamp found.`);
     }
 
-    const needsRefresh = await shouldRefreshEmails(googleId, forceRefresh);
 
-    if (settings.autoCheckEmails && !needsRefresh && existingResults) {
-      console.log(`[${googleId}] Returning cached emails from ${existingResults.lastUpdated}`);
+    // --- Check if refresh from GMAIL is needed ---
+    const needsRefreshFromGmail = await shouldRefreshEmails(googleId, false); // Pass false for forceRefresh here
+
+    // If auto-check is ON, and it's NOT time to refresh, and we HAVE previous results, return cached DB results
+    if (settings.autoCheckEmails && !needsRefreshFromGmail && existingResults) {
+      console.log(`[${googleId}] Returning cached emails from DB (last updated: ${existingResults.lastUpdated})`);
       return res.json({
         success: true,
         emails: existingResults.emails || [],
-        fromCache: true,
+        fromCache: true, // Indicate results are from DB cache
         lastUpdated: existingResults.lastUpdated,
         lastEmailTimestamp: existingResults.lastEmailTimestamp
       });
     }
 
-    console.log(`[${googleId}] Refresh needed (forceRefresh=${forceRefresh}, needsRefresh=${needsRefresh}). Fetching new emails.`);
+    // --- Proceed with fetching from Gmail ---
+    console.log(`[${googleId}] Refresh needed (autoCheck=${settings.autoCheckEmails}, needsRefresh=${needsRefreshFromGmail}). Fetching new emails from Gmail.`);
     const oauth2Client = new google.auth.OAuth2();
     oauth2Client.setCredentials({ access_token: token });
     const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
+    // Get user's own email address to detect self-sent emails
     try {
       const userInfoResponse = await gmail.users.getProfile({ userId: "me" });
       userEmail = userInfoResponse.data.emailAddress.toLowerCase();
       console.log(`[${googleId}] User email identified as: ${userEmail}`);
     } catch (error) {
       console.error(`[${googleId}] Failed to retrieve user email:`, error);
-      // Continue without user email - we'll just skip the self-sent email detection
+      // Continue without user email - self-sent email detection will be skipped
     }
 
+    // Build the Gmail query
     let query = "category:primary";
     if (lastCheckTimestampMs > 0) {
+      // Convert milliseconds timestamp to seconds for the Gmail API query
       const lastCheckTimestampSec = Math.floor(lastCheckTimestampMs / 1000);
       query += ` after:${lastCheckTimestampSec}`;
-      console.log(`[${googleId}] Fetching emails after timestamp: ${lastCheckTimestampSec} (${new Date(lastCheckTimestampMs).toISOString()})`);
+      console.log(`[${googleId}] Fetching emails using query: "${query}" (timestamp: ${lastCheckTimestampSec} / ${new Date(lastCheckTimestampMs).toISOString()})`);
     } else {
-       console.log(`[${googleId}] No previous timestamp found, fetching recent primary emails.`);
+       console.log(`[${googleId}] Fetching recent primary emails (no previous timestamp). Query: "${query}"`);
     }
 
-    // yaha tak
-
+    // Fetch message list and trusted domains concurrently
     const [messagesRes, trustedDomainsDoc] = await Promise.all([
-      gmail.users.messages.list({ userId: "me", maxResults: 50, q: query }),
+      gmail.users.messages.list({ userId: "me", maxResults: 50, q: query }), // Limit results for safety
       TrustedDomains.findOne({ googleId })
     ]);
 
     const trustedDomains = trustedDomainsDoc?.Domains || [];
     const messages = messagesRes.data.messages || [];
 
+    // --- Handle case where NO new messages are found by the query ---
     if (messages.length === 0) {
-      console.log(`[${googleId}] No new messages found since last check.`);
+      console.log(`[${googleId}] No new messages found via Gmail API since last check.`);
+      // Update lastChecked timestamp even if no emails were fetched
       await UserSettings.findOneAndUpdate(
         { googleId },
         { lastChecked: new Date() },
         { new: true, upsert: true }
       );
+      // Return the existing results from the database
       return res.json({
         success: true,
         emails: existingResults?.emails || [],
-        fromCache: false,
-        lastUpdated: existingResults?.lastUpdated || new Date(),
-        lastEmailTimestamp: lastCheckTimestampMs
+        fromCache: false, // Not from cache, but no new emails
+        lastUpdated: existingResults?.lastUpdated || new Date(), // Use existing or current time
+        lastEmailTimestamp: lastCheckTimestampMs // Timestamp remains unchanged
       });
     }
 
-    console.log(`[${googleId}] Found ${messages.length} new message(s). Fetching details.`);
+    console.log(`[${googleId}] Found ${messages.length} potential new message(s). Fetching details.`);
 
+    // Fetch full details for each message ID
     const batchRequests = messages.map(message =>
       gmail.users.messages.get({ userId: "me", id: message.id, format: "full" })
     );
     const emailResponses = await Promise.all(batchRequests);
 
     let newlyProcessedEmails = []; // Store emails processed in *this run*
+    // Initialize the max timestamp for *this run* with the previous max.
+    // We will update it only if we find an email with a genuinely newer timestamp.
     let maxTimestampThisRun = lastCheckTimestampMs;
 
+    // --- Process each fetched email ---
     for (const response of emailResponses) {
       const msg = response.data;
       const messageId = msg.id;
+      // Gmail internalDate is a string representing milliseconds since epoch
       const internalDateMs = parseInt(msg.internalDate, 10);
 
+      // ***** THE FIX: Client-side timestamp check *****
+      // Ensure we only process emails STRICTLY newer than the last one recorded.
+      // This prevents reprocessing the exact same email fetched due to second-level granularity of 'after:'.
+      if (lastCheckTimestampMs > 0 && internalDateMs <= lastCheckTimestampMs) {
+           console.log(`[${googleId}] Skipping email ID ${messageId} - timestamp (${internalDateMs}) is not newer than last recorded (${lastCheckTimestampMs}).`);
+           continue; // Skip to the next email
+      }
+      // ************************************************
+
+      // If the email passed the timestamp check, update the max timestamp *for this run*
       if (internalDateMs > maxTimestampThisRun) {
           maxTimestampThisRun = internalDateMs;
       }
 
+      // --- Extract email details ---
       const headers = msg.payload.headers;
-      const fromHeader = headers.find((h) => h.name === "From")?.value || "";
-      // Extract sender's email from the From header
+      const fromHeader = headers.find((h) => h.name.toLowerCase() === "from")?.value || "";
       const senderEmail = fromHeader.match(/[\w\.-]+@[\w\.-]+\.\w+/)?.[0]?.toLowerCase() || "";
       const domainMatch = fromHeader.match(/@([^>\s]+)/);
       const senderDomain = domainMatch ? domainMatch[1].toLowerCase() : null;
 
-      // Check if this is a self-sent email (only if we have the user's email)
-      const isSelfSent = userEmail && senderEmail === userEmail;
-
+      // Check if sender domain is trusted
       if (senderDomain && trustedDomains.includes(senderDomain)) {
-        console.log(`[${googleId}] Skipping email from trusted domain: ${senderDomain}`);
+        console.log(`[${googleId}] Skipping email ID ${messageId} from trusted domain: ${senderDomain}`);
         continue;
       }
 
-      const subject = headers.find((h) => h.name === "Subject")?.value || "(No Subject)";
-      const dateHeader = headers.find((h) => h.name === "Date")?.value;
+      // Check if it's a self-sent email (only if userEmail was successfully retrieved)
+      const isSelfSent = userEmail && senderEmail === userEmail;
+
+      const subject = headers.find((h) => h.name.toLowerCase() === "subject")?.value || "(No Subject)";
+      const dateHeader = headers.find((h) => h.name.toLowerCase() === "date")?.value;
       const snippet = msg.snippet || "";
-      const securityStatusInfo = parseAuthenticationHeadersOptimized(headers);
-      const urls = extractUrlsFromEmail(msg);
+
+      // --- Perform security checks ---
+      const securityStatusInfo = parseAuthenticationHeadersOptimized(headers); // Placeholder
+      const urls = extractUrlsFromEmail(msg); // Placeholder
       const textContent = extractTextContent(msg.payload);
+
+      // Translate if necessary
       const translatedSnippet = await logTranslationIfNeeded(snippet, "Snippet", subject);
       const translatedBody = await logTranslationIfNeeded(textContent, "Body", subject);
       const combinedText = `${translatedSnippet}\n${translatedBody}`;
+
+      // Run NLP model
       const { confidence, prediction } = await runNlpModel(combinedText);
       const isHighConfidencePhishing = prediction === 1 && confidence >= 0.9;
 
+      // Determine initial security status based on headers, then override if NLP is highly confident
       let finalSecurityStatus = securityStatusInfo.status;
       if (isHighConfidencePhishing) {
           finalSecurityStatus = 'malicious';
+          console.log(`[${googleId}] Email ID ${messageId} ("${subject}") flagged as high-confidence phishing by NLP.`);
       }
-      
-      // Handle self-sent emails
+
+      // Adjust status for self-sent emails (make them safe unless NLP strongly disagrees)
       if (isSelfSent) {
-        console.log(`[${googleId}] Detected self-sent email: "${subject}"`);
-        // Override security status to safe for self-sent emails unless NLP model has high confidence it's phishing
+        console.log(`[${googleId}] Detected self-sent email ID ${messageId}: "${subject}"`);
         if (!isHighConfidencePhishing) {
-          finalSecurityStatus = 'safe';
+          finalSecurityStatus = 'safe'; // Override to safe for self-sent, unless NLP flags it
         }
       }
 
+      // Prepare security details object
       const securityDetails = {
           ...securityStatusInfo.details,
           nlpCheck: {
@@ -337,53 +377,74 @@ exports.getGmailEmails = async (req, res) => {
                   ? `Potential phishing detected (${Math.round(confidence * 100)}% confidence)`
                   : `No phishing detected (${Math.round(confidence * 100)}% confidence)`
           }
+          // urlCheck details will be added by checkUrlsAgainstDatabase
       };
 
-      // Add self-sent email explanation to security details if applicable
-      if (isSelfSent) {
-        securityDetails.selfSent = {
-          pass: true,
-          details: "This email was sent from your own account to yourself. Authentication headers may be missing or incomplete for self-sent emails, which can trigger security warnings."
-        };
-      }
+       // Add self-sent explanation if applicable
+       if (isSelfSent) {
+         securityDetails.selfSent = {
+           pass: true, // Considered "passing" the self-sent check
+           details: "This email was sent from your own account. Authentication headers might be incomplete, potentially causing warnings, but it's generally safe unless flagged otherwise (e.g., by NLP)."
+         };
+       }
+
 
       // Add to the list of emails processed in this specific run
       newlyProcessedEmails.push({
         subject,
         from: fromHeader,
         date: dateHeader,
-        internalDate: internalDateMs,
+        internalDate: internalDateMs, // Store the millisecond timestamp
         messageId: messageId,
         snippet,
-        securityStatus: finalSecurityStatus,
+        securityStatus: finalSecurityStatus, // Initial status before URL check
         securityDetails,
         urls,
         nlpConfidence: confidence,
         nlpPrediction: prediction,
         isHighConfidencePhishing: isHighConfidencePhishing,
-        isSelfSent: isSelfSent // Store this flag for potential use later
+        isSelfSent: isSelfSent,
+        googleId: googleId // Pass googleId for URL checker logging if needed
       });
     }
-    // End processing loop for new emails
+    // --- End processing loop for new emails ---
+
+    // If no emails actually passed the timestamp filter and processing
+    if (newlyProcessedEmails.length === 0) {
+         console.log(`[${googleId}] No emails processed in this run (all were older or skipped).`);
+         // Update lastChecked timestamp
+         await UserSettings.findOneAndUpdate(
+            { googleId }, { lastChecked: new Date() }, { new: true, upsert: true }
+         );
+         // Return existing results
+         return res.json({
+            success: true,
+            emails: existingResults?.emails || [],
+            fromCache: false,
+            lastUpdated: existingResults?.lastUpdated || new Date(),
+            lastEmailTimestamp: lastCheckTimestampMs // Timestamp unchanged
+         });
+    }
+
+    console.log(`[${googleId}] Processed ${newlyProcessedEmails.length} new email(s) after timestamp filter.`);
 
     // --- Check URLs (modifies securityStatus/details IN PLACE if malicious URL found) ---
-    const checkedNewEmails = await checkUrlsAgainstDatabase(newlyProcessedEmails); // Note: checkUrlsAgainstDatabase modifies securityStatus if URLs are bad
+    const checkedNewEmails = await checkUrlsAgainstDatabase(newlyProcessedEmails); // Placeholder
 
     // --- Update analyses Data ---
     const newlyProcessedCount = checkedNewEmails.length;
     let newlyMaliciousCount = 0;
-    const newMaliciousSenders = new Set(); // Use Set for automatic uniqueness
+    const newMaliciousSenders = new Set();
 
     checkedNewEmails.forEach(email => {
       // Check the *final* security status AFTER URL checks
       if (email.securityStatus === 'malicious') {
         newlyMaliciousCount++;
-        // Extract just the email address part if possible, otherwise use the full 'From' header
         const fromEmailMatch = email.from.match(/[\w\.-]+@[\w\.-]+\.\w+/);
         if (fromEmailMatch) {
             newMaliciousSenders.add(fromEmailMatch[0]);
         } else {
-            newMaliciousSenders.add(email.from); // Fallback to full header if regex fails
+            newMaliciousSenders.add(email.from); // Fallback
         }
       }
     });
@@ -395,70 +456,90 @@ exports.getGmailEmails = async (req, res) => {
             totalEmailsProcessed: newlyProcessedCount,
             maliciousEmailsCount: newlyMaliciousCount
           },
-          $set: { lastUpdated: new Date() } // Update timestamp
+          $set: { lastUpdated: new Date() }
         };
-        // Add senders only if there are new ones
         if (newMaliciousSenders.size > 0) {
           analysesUpdate.$addToSet = { maliciousSenders: { $each: Array.from(newMaliciousSenders) } };
         }
-
         await Useranalyses.findOneAndUpdate(
           { googleId: googleId },
           analysesUpdate,
-          { upsert: true, new: true } // Create if doesn't exist
+          { upsert: true, new: true }
         );
         console.log(`[${googleId}] Updated analyses: +${newlyProcessedCount} processed, +${newlyMaliciousCount} malicious.`);
       } catch (analysesError) {
         console.error(`[${googleId}] Failed to update user analyses data:`, analysesError);
-        // Decide if you want to halt execution or just log the error
       }
     }
     // --- End analyses Update ---
 
-
     // --- Combine, Save Results, Update Settings, Send Response ---
     const existingEmails = existingResults?.emails || [];
+    // Combine newly processed emails with previously stored ones
     let combinedEmails = [...checkedNewEmails, ...existingEmails];
-    const MAX_STORED_EMAILS = 100;
-    if (combinedEmails.length > MAX_STORED_EMAILS) {
-        combinedEmails = combinedEmails.slice(0, MAX_STORED_EMAILS);
-    }
+
+    // Sort by internal date (descending - newest first)
     combinedEmails.sort((a, b) => b.internalDate - a.internalDate);
-    let finalEmailsToSave = combinedEmails;
+
+    // Deduplicate based on messageId just in case (belt and suspenders)
+    const uniqueEmailsMap = new Map();
+    combinedEmails.forEach(email => {
+        if (!uniqueEmailsMap.has(email.messageId)) {
+            uniqueEmailsMap.set(email.messageId, email);
+        }
+    });
+    let uniqueCombinedEmails = Array.from(uniqueEmailsMap.values());
+
+    // Sort again after deduplication
+     uniqueCombinedEmails.sort((a, b) => b.internalDate - a.internalDate);
+
+
+    // Limit the total number of stored emails
+    const MAX_STORED_EMAILS = 100; // Or get from config
+    if (uniqueCombinedEmails.length > MAX_STORED_EMAILS) {
+        uniqueCombinedEmails = uniqueCombinedEmails.slice(0, MAX_STORED_EMAILS);
+        console.log(`[${googleId}] Trimmed combined email list to ${MAX_STORED_EMAILS} emails.`);
+    }
 
     const now = new Date();
     const updateData = {
       googleId,
-      emails: finalEmailsToSave,
+      emails: uniqueCombinedEmails,
       lastUpdated: now,
+      // IMPORTANT: Save the highest timestamp found *in this run*
       lastEmailTimestamp: maxTimestampThisRun
     };
+
+    // Save the combined & potentially truncated results
     await EmailResult.findOneAndUpdate(
       { googleId }, updateData, { new: true, upsert: true }
     );
-    console.log(`[${googleId}] Saved/Updated ${finalEmailsToSave.length} emails. Newest timestamp: ${maxTimestampThisRun}`);
+    console.log(`[${googleId}] Saved/Updated ${uniqueCombinedEmails.length} unique emails. Newest timestamp for next check: ${maxTimestampThisRun} (${new Date(maxTimestampThisRun).toISOString()})`);
 
+    // Update the last time an automatic check was performed
     await UserSettings.findOneAndUpdate(
       { googleId }, { lastChecked: now }, { new: true, upsert: true }
     );
 
+    // Send the final list back to the client
     res.json({
       success: true,
-      emails: finalEmailsToSave,
-      fromCache: false,
+      emails: uniqueCombinedEmails,
+      fromCache: false, // Data is fresh from Gmail
       lastUpdated: now,
-      lastEmailTimestamp: maxTimestampThisRun
+      lastEmailTimestamp: maxTimestampThisRun // Return the latest timestamp used
     });
 
   } catch (err) {
     console.error(`[${googleId}] Error processing emails:`, err);
+    // Handle specific authentication errors
     if (err.code === 401 || (err.response && err.response.status === 401)) {
      return res.status(401).json({ success: false, error: 'Authentication failed. Please log in again.', requiresReAuth: true });
     }
+    // Generic error handling
     res.status(500).json({ success: false, error: err.message || "Internal server error processing emails." });
   }
 };
-
 // --- toggleAutoCheck function remains the same ---
 exports.toggleAutoCheck = async (req, res) => {
   const { googleId, autoCheckEmails } = req.body;
@@ -514,7 +595,6 @@ exports.getAutoCheckStatus = async (req, res) => {
   }
 };
 
-// --- forceCheckEmails function remains the same ---
 // It correctly passes forceRefresh: true to getGmailEmails
 exports.forceCheckEmails = async (req, res) => {
   const { token, googleId } = req.body;
@@ -550,7 +630,6 @@ exports.forceCheckEmails = async (req, res) => {
     }
   }
 };
-
 
 // --- parseAuthenticationHeadersOptimized function remains the same ---
 function parseAuthenticationHeadersOptimized(headers) {
