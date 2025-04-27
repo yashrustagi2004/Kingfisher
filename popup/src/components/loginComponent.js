@@ -140,55 +140,56 @@ function LoginComponent() {
 
   return (
     <div className="container">
-      <div className="login-card">
-        {!isLoggedIn ? (
+    <div className="login-card">
+      {!isLoggedIn ? (
+        <>
+          <div className="brand">Kingfisher</div>
+          <button id="login-btn" className="login-btn" onClick={handleLoginClick}>
+            Login
+          </button>
+        </>
+      ) : (
+        <>
           <div className="header-row">
             <div className="brand">Kingfisher</div>
-            <button id="login-btn" className="login-btn" onClick={handleLoginClick}>
-              Login
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="header-row">
-              <div className="brand">Kingfisher</div>
-              <div className="toggle-controls">
-                <label className="toggle-switch main-toggle">
-                  <input
-                    type="checkbox"
-                    id="toggle-btn"
-                    checked={isEnabled}
-                    onChange={handleToggleChange}
-                  />
-                  <span className="slider round"></span>
-                </label>
-                <img
-                  src="setting.png"
-                  id="settings-icon"
-                  alt="Settings"
-                  onClick={handleSettingsClick}
-                  title="Settings"
-                />
-              </div>
-            </div>
-            
-            <div className="auto-check-toggle">
-              <label className="toggle-switch">
+            <div className="toggle-controls">
+              <label className="toggle-switch main-toggle">
                 <input
                   type="checkbox"
-                  id="autoCheckToggle"
-                  checked={autoCheckEmails}
-                  onChange={(e) => toggleAutoCheck(e.target.checked)}
-                  disabled={!isEnabled}
+                  id="toggle-btn"
+                  checked={isEnabled}
+                  onChange={handleToggleChange}
                 />
                 <span className="slider round"></span>
               </label>
-              <span className="toggle-label">Auto-check emails</span>
+              <img
+                src="setting.png"
+                id="settings-icon"
+                alt="Settings"
+                onClick={handleSettingsClick}
+                title="Settings"
+              />
             </div>
-          </>
-        )}
-      </div>
+          </div>
+          
+          <div className="auto-check-toggle">
+            <label className="toggle-switch">
+              <input
+                type="checkbox"
+                id="autoCheckToggle"
+                checked={autoCheckEmails}
+                onChange={(e) => toggleAutoCheck(e.target.checked)}
+                disabled={!isEnabled}
+              />
+              <span className="slider round"></span>
+            </label>
+            <span className="toggle-label">Auto-check emails</span>
+          </div>
+        </>
+      )}
     </div>
+  </div>
+  
   );
 }
 

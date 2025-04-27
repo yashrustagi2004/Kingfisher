@@ -9,7 +9,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: #f5a2a1;
+  background-color: #7a8fa1;
   min-height: 100vh; 
 }
 
@@ -21,40 +21,40 @@ body {
 }
 
 .login-card {
-  background-color: #ffcccb;
+  background-color: #f0f4f8;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  width: 250px;
-  height: 110px;
-  padding: 20px; 
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  width: 300px;
+  padding: 25px;
+  border-radius: 8px;
 }
 
 .brand {
-  margin-bottom: 10px;
-  font-size: 28px;
+  font-size: 24px;
   font-weight: bold;
   color: #333;
   text-align: center;
-  width: 225px;
+  margin-bottom: 20px;
 }
 
 .login-btn {
-  margin-top: 7px;
-  background-color: #a9d6ff;
+  background-color: #d7e0e6;
   border: 1px solid #333;
-  border-radius: 10px;
-  padding: 10px;
+  border-radius: 8px;
+  padding: 10px 20px;
   font-size: 16px;
   color: #333;
   cursor: pointer;
   transition: background-color 0.3s ease;
+  text-align: center;
+  min-width: 100px;
 }
 
 .login-btn:hover {
-  background-color: #87c5ff;
+  background-color: #c7d0d6;
 }
 
 .hidden {
@@ -100,7 +100,7 @@ body {
 }
 
 input:checked + .slider {
-  background-color: #87c5ff;
+  background-color: #7a8fa1;
 }
 
 input:checked + .slider:before {
@@ -118,7 +118,8 @@ input:checked + .slider:before {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: 10px;
+  margin-top: 16px;
+  width: 100%;
 }
 
 /* Auto-check toggle properties */
@@ -126,13 +127,13 @@ input:checked + .slider:before {
   display: flex;
   align-items: center;
   width: 100%;
-  margin-top: 10px;
+  margin-top: 16px;
 }
 
 .toggle-label {
-  font-size: 14px;
+  font-size: 16px;
   color: #333;
-  margin-left: 5px;
+  margin-left: 8px;
 }
 
 .header-row {
@@ -140,12 +141,13 @@ input:checked + .slider:before {
   justify-content: space-between;
   align-items: center;
   width: 100%;
+  margin-bottom: 16px;
 }
 
 .toggle-controls {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 /* Notification Styles */
@@ -153,44 +155,67 @@ input:checked + .slider:before {
   position: fixed;
   top: 16px;
   right: 16px;
-  background-color: #a9ffcb;
-  padding: 10px 18px;
+  background-color: #d7e0e6;
+  padding: 12px 20px;
   border-radius: 8px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
   opacity: 0;
   transition: opacity 0.3s ease-in-out;
   z-index: 9999;
-  color: #222;
-  font-size: 14px;
+  color: #333;
+  font-size: 16px;
+  max-width: 300px;
+  word-wrap: break-word;
+  border-left: 4px solid #7a8fa1;
 }
 
 .notification.error {
-  background-color: #ffadad;
+  background-color: #f3f3f3;
   color: #721c24;
+  border-left: 4px solid #F44336;
+}
+
+.notification.show {
+  opacity: 1;
 }
 
 /* Responsive styles */
 @media (max-width: 768px) {
   .login-card {
-    padding: 25px 30px;
+    width: 280px;
+    padding: 20px;
   }
   
   .brand {
-    width: 200px;
+    font-size: 22px;
+  }
+  
+  .notification {
+    max-width: 280px;
+    right: 8px;
+    top: 8px;
   }
 }
 
 @media (max-width: 480px) {
+  .login-card {
+    width: 250px;
+    padding: 15px;
+  }
+  
   .brand {
-    font-size: 22px;
-    width: 180px;
+    font-size: 20px;
+    margin-bottom: 15px;
   }
   
   .login-btn {
     font-size: 14px;
+    padding: 8px 16px;
   }
   
-  .login-card {
-    padding: 20px 25px;
+  .notification {
+    max-width: 250px;
+    padding: 10px 16px;
+    font-size: 14px;
   }
 }
