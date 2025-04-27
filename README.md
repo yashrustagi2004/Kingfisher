@@ -1,69 +1,100 @@
-# Kingf# 
+# Kingfisher 
 
 # Introduction
 
-Phishing emails are cybersecurity threats that can trick users into revealing sensitive information such as passwords, financial details, or personal data. Traditional rule-based detection methods struggle with evolving phishing tactics. This project aims to develop an NLP-based phishing email detection system that can analyze email content, identify suspicious patterns, and classify emails as phishing or legitimate. By leveraging machine learning and NLP techniques, the system will improve detection accuracy, reduce false positives, and enhance email security.
+Phishing emails are cybersecurity threats that can trick users into revealing sensitive information such as passwords, financial details, or personal data. Traditional rule-based detection methods struggle with evolving phishing tactics. 
 
-# Proposed Methodology
+Kingfisher is our proposed solution for real-time detection of phishing attempts made through emails. It is a Chrome Extension for detection of phishing emails using Natural Language Processing (NLP).
 
-1. Checking Email Headers: SPF, DKIM, DMARC
-2. Cross-checking the urls in the body in our exhaustive database to detect phishing links.
-3. Understanding the sentiment of the email body using NLP and alerting the user for any suspicious email.
+# Product Features
 
-# Product Functionality 
-1. Real-time phishing email detection
-2. Multilingual Support
-3. User Privacy
-4. Mail Analysis
-5. User Awareness
-6. Reporting System
+1. Created for Real-time phishing email detection
+2. Is able to scan emails for phishing attempts even in languages other than English
+   (Currently supported for French and Spanish only)
+4. Satisfies user privacy by allowing users to specify which emails should not be scanned.
+5. Provides 3 levels of security
+   - Email Header checker
+   - URL Scanner
+   - Text Analysis using NLP
+
 
 # Tech Stack And Technologies Used
 
 1. Backend: NodeJS, ExpressJS
-
 2. Frontend: ReactJS
-
 3. Database: MongoDB
+5. Security: Google Auth
 
-4. Other Tools: GitHub/Git, Jenkins, Docker, Obsidian
+# Installation and Setup Guide
+## 1 Manual Installation
+### Clone this repository
 
-5. Security & NLP: Google Auth, Google BERT
+```
+git clone https://github.com/yashrustagi2004/Kingfisher.git
+cd Kingfisher
+```
+### Install Dependencies
+- #### Install backend dependencies
 
+```
+cd backend
+npm install
+```
+- #### Install NLP Service dependencies
 
-# Modules
-1. user management
-2. url scanner
-3. email header checker
-4. translation
-5. nlp model
-6. malicious_domains
-7. database
-8. search 
+```
+cd ../nlp-service
+pip install -r requirements.txt
+```
+### Run Services Manually
+- #### Start backend server
+```
+cd backend
+npm start
+```
+- #### Start NLP service
+```
+cd ../nlp-service
+python app.py
+```
+- #### Run the build for the extension
+```
+cd ../popup
+npm run build
+```
+- #### Run the Libre Translate Container
+Open the terminal
+```
+docker run -it --name translator \
+  -p 3000:5000 \
+  -v $HOME/libretranslate_data:/app/libretranslate/data \
+  -e LT_LOAD_ONLY="en,es,fr" \
+  libretranslate/libretranslate
+```
 
-# Project Working 
+## 2 Docker Installation
+### Start services using docker compose
+```
+docker-compose up --build
+```
+### Verify running containers
+```
+docker ps
+```
 
-User Authentication: Users log into the system using their credentials via Google Auth.
-
-Email Submission: Email scanned by the program.
-
-Email Header Analysis: The system extracts email headers and verifies SPF, DKIM, and DMARC records.
-
-URL & Domain Verification: Any links in the email are cross-checked against a phishing database to identify potential threats.
-
-NLP-Based Content Analysis: The email text undergoes sentiment and intent analysis using Google BERT to detect suspicious wording.
-
-Phishing Score Generation: Based on the above checks, Kingfisher assigns a category.
-
-User Notification & Action: The user is presented with a report detailing why the email was flagged, and they can choose to report it if necessary.
-
-Reporting & Awareness: Reported emails are stored for further investigation, and users are educated on phishing risks.
-
+# Run the Chrome Extension
+1. Open Google Chrome
+2. Go to chrome://extensions/
+3. Enable Developer Mode (top right corner)
+4. Click Load unpacked
+5. Select the popup/ folder
+ 
 # Contributors
-•	Yash Rustagi 
-•	Arjav Jhamb  
-•	Aditya Chawla 
-• Ishika Sahu
+- Yash Rustagi 
+- Ishika Sahu
+- Arjav Jhamb  
+- Aditya Chawla 
+  
 
 
 
