@@ -186,175 +186,257 @@ document.addEventListener("DOMContentLoaded", function () {
           if (emails.length > 0) {
             // Add CSS for the email list and popup
             contentBody.innerHTML = `
-              <style>
-                .email-list {
-                  list-style-type: none;
-                  padding: 0;
-                }
-                .email-item {
-                  border: 1px solid #ddd;
-                  border-radius: 8px;
-                  margin-bottom: 10px;
-                  padding: 15px;
-                  cursor: pointer;
-                  transition: background-color 0.2s;
-                }
-                .email-item:hover {
-                  background-color: #f5f5f5;
-                }
-                .safe-tag {
-                  background-color: #4CAF50;
-                  color: white;
-                  padding: 3px 8px;
-                  border-radius: 4px;
-                  font-size: 16px;
-                  margin-left: 10px;
-                }
-                .malicious-tag {
-                  background-color: #F44336;
-                  color: white;
-                  padding: 3px 8px;
-                  border-radius: 4px;
-                  font-size: 16px;
-                  margin-left: 10px;
-                }
-                .email-meta {
-                  margin-bottom: 8px;
-                }
+                <style>
+                  /* Base Styles */
+                  * {
+                    box-sizing: border-box;
+                    font-size: 16px;
+                    line-height: 1.5;
+                  }
+                  
+                  /* Email List Styles */
+                  .email-list {
+                    list-style-type: none;
+                    padding: 0;
+                    margin: 0;
+                  }
+                  
+                  .email-item {
+                    border: 1px solid #ddd;
+                    border-radius: 8px;
+                    margin-bottom: 16px;
+                    padding: 20px;
+                    cursor: pointer;
+                    transition: background-color 0.2s;
+                    background-color: #fff;
+                  }
+                  
+                  .email-item:hover {
+                    background-color: #f5f5f5;
+                  }
+                  
+                  /* Tag Styles */
+                  .safe-tag, .malicious-tag {
+                    display: inline-block;
+                    padding: 4px 10px;
+                    border-radius: 4px;
+                    font-size: 14px;
+                    font-weight: 600;
+                    margin-left: 12px;
+                    vertical-align: middle;
+                  }
+                  
+                  .safe-tag {
+                    background-color: #4CAF50;
+                    color: white;
+                  }
+                  
+                  .malicious-tag {
+                    background-color: #F44336;
+                    color: white;
+                  }
+                  
+                  /* Email Metadata */
+                  .email-meta {
+                    margin-bottom: 12px;
+                    display: flex;
+                    align-items: center;
+                    flex-wrap: wrap;
+                  }
+                  
+                  .email-meta strong {
+                    min-width: 70px;
+                    display: inline-block;
+                  }
+                  
+                  /* Modal/Popup Styles */
+                  .modal {
+                    display: none;
+                    position: fixed;
+                    z-index: 1000;
+                    left: 0;
+                    top: 0;
+                    width: 100%;
+                    height: 100%;
+                    background-color: rgba(0,0,0,0.4);
+                    overflow: auto;
+                  }
+                  
+                  .modal-content {
+                    background-color: #fefefe;
+                    margin: 10% auto;
+                    padding: 24px;
+                    border: 1px solid #888;
+                    border-radius: 8px;
+                    width: 80%;
+                    max-width: 600px;
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                  }
+                  
+                  .close-button {
+                    color: #aaa;
+                    float: right;
+                    font-size: 28px;
+                    font-weight: bold;
+                    cursor: pointer;
+                    line-height: 1;
+                  }
+                  
+                  .close-button:hover {
+                    color: black;
+                  }
+                  
+                  .modal-content h3 {
+                    margin-top: 0;
+                    margin-bottom: 16px;
+                    font-size: 20px;
+                  }
+                  
+                  /* Security Details Section */
+                  .security-details {
+                    margin-top: 16px;
+                    padding: 16px;
+                    background-color: #f8f8f8;
+                    border-radius: 8px;
+                  }
+                  
+                  .security-item {
+                    margin: 12px 0;
+                    padding: 8px;
+                    border-radius: 4px;
+                  }
+                  
+                  .security-pass {
+                    color: #4CAF50;
+                  }
+                  
+                  .security-fail {
+                    color: #F44336;
+                  }
+                  
+                  /* URL Section */
+                  .url-section {
+                    margin-top: 20px;
+                  }
+                  
+                  .url-section h4 {
+                    margin-bottom: 12px;
+                    font-size: 18px;
+                  }
+                  
+                  .url-list {
+                    margin: 0;
+                    padding: 0;
+                    list-style-type: none;
+                    border: 1px solid #eee;
+                    border-radius: 8px;
+                    overflow: hidden;
+                  }
+                  
+                  .url-item {
+                    padding: 12px;
+                    border-bottom: 1px solid #eee;
+                    word-break: break-all;
+                  }
+                  
+                  .url-item:last-child {
+                    border-bottom: none;
+                  }
+                  
+                  /* Cache Notice */
+                  .cache-notice {
+                    background-color: #f0f8ff;
+                    border: 1px solid #cce5ff;
+                    border-radius: 8px;
+                    padding: 16px;
+                    margin-bottom: 20px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                  }
+                  
+                  .refresh-btn {
+                    background-color: #4285f4;
+                    color: white;
+                    border: none;
+                    padding: 8px 16px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 16px;
+                    transition: background-color 0.3s;
+                    display: flex;
+                    align-items: center;
+                  }
+                  
+                  .refresh-btn:hover {
+                    background-color: #3367d6;
+                  }
+                  
+                  .loading-spinner {
+                    display: inline-block;
+                    width: 16px;
+                    height: 16px;
+                    border: 2px solid rgba(255,255,255,0.3);
+                    border-radius: 50%;
+                    border-top-color: #fff;
+                    animation: spin 1s ease-in-out infinite;
+                    margin-left: 8px;
+                  }
+                  
+                  @keyframes spin {
+                    to { transform: rotate(360deg); }
+                  }
+                  
+                  /* Responsive adjustments */
+                  @media (max-width: 768px) {
+                    .email-meta {
+                      flex-direction: column;
+                      align-items: flex-start;
+                    }
+                    
+                    .safe-tag, .malicious-tag {
+                      margin-left: 0;
+                      margin-top: 4px;
+                    }
+                  }
+                </style>
                 
-                /* Modal/Popup Styles */
-                .modal {
-                  display: none;
-                  position: fixed;
-                  z-index: 1000;
-                  left: 0;
-                  top: 0;
-                  width: 100%;
-                  height: 100%;
-                  background-color: rgba(0,0,0,0.4);
-                  overflow: auto;
-                }
-                .modal-content {
-                  background-color: #fefefe;
-                  margin: 10% auto;
-                  padding: 20px;
-                  border: 1px solid #888;
-                  border-radius: 8px;
-                  width: 80%;
-                  max-width: 600px;
-                  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-                }
-                .close-button {
-                  color: #aaa;
-                  float: right;
-                  font-size: 28px;
-                  font-weight: bold;
-                  cursor: pointer;
-                }
-                .close-button:hover {
-                  color: black;
-                }
-                .security-details {
-                  margin-top: 15px;
-                  padding: 10px;
-                  background-color: #f8f8f8;
-                  border-radius: 4px;
-                }
-                .security-item {
-                  margin: 8px 0;
-                  padding: 5px;
-                  border-radius: 4px;
-                }
-                .security-pass {
-                  color: #4CAF50;
-                }
-                .security-fail {
-                  color: #F44336;
-                }
-                .url-list {
-                  margin-top: 15px;
-                  padding: 0;
-                  list-style-type: none;
-                }
-                .url-item {
-                  padding: 8px;
-                  border-bottom: 1px solid #eee;
-                  word-break: break-all;
-                }
-                .url-section {
-                  margin-top: 15px;
-                }
-                .url-section h4 {
-                  margin-bottom: 10px;
-                },
-                .cache-notice {
-                  background-color: #f0f8ff;
-                  border: 1px solid #cce5ff;
-                  border-radius: 4px;
-                  padding: 10px;
-                  margin-bottom: 15px;
-                  display: flex;
-                  justify-content: space-between;
-                  align-items: center;
-                }
-                .refresh-btn {
-                  background-color: #4285f4;
-                  color: white;
-                  border: none;
-                  padding: 6px 12px;
-                  border-radius: 4px;
-                  cursor: pointer;
-                  font-size: 14px;
-                  transition: background-color 0.3s;
-                }
-                .refresh-btn:hover {
-                  background-color: #3367d6;
-                }
-                .loading-spinner {
-                  display: inline-block;
-                  width: 16px;
-                  height: 16px;
-                  border: 2px solid rgba(255,255,255,0.3);
-                  border-radius: 50%;
-                  border-top-color: #fff;
-                  animation: spin 1s ease-in-out infinite;
-                  margin-left: 8px;
-                }
-                @keyframes spin {
-                  to { transform: rotate(360deg); }
-                }
-              </style>
-              
-              <!-- Modal/Popup container -->
-              <div id="emailModal" class="modal">
-                <div class="modal-content">
-                  <span class="close-button" id="closeModalBtn">&times;</span>
-                  <h3 id="modalTitle">Email Details</h3>
-                  <div id="modalContent"></div>
+                <!-- Modal/Popup container -->
+                <div id="emailModal" class="modal">
+                  <div class="modal-content">
+                    <span class="close-button" id="closeModalBtn">&times;</span>
+                    <h3 id="modalTitle">Email Details</h3>
+                    <div id="modalContent"></div>
+                  </div>
                 </div>
-              </div>
-              
-              ${cacheNotice}
-              
-              <ul class="email-list" id="emailListContainer">
-                ${emails
-                  .map((email, index) => `
-                  <li class="email-item" data-index="${index}" style="border: 1px solid #ddd; border-radius: 8px; margin-bottom: 10px; padding: 15px; cursor: pointer; transition: background-color 0.2s;">
-                    <div class="email-meta" style="margin-bottom: 8px; font-size: 16px;">
-                      <strong>From:</strong> ${email.from}
-                      <span class="${email.securityStatus === 'safe' ? 'safe-tag' : 'malicious-tag'}">
-                        ${email.securityStatus === 'safe' ? 'SAFE' : 'SUSPICIOUS'}
-                      </span>
-                    </div>
-                    <div class="email-meta" style="margin-bottom: 8px; font-size: 16px;"><strong>Subject:</strong> ${email.subject}</div>
-                    <div class="email-meta" style="margin-bottom: 8px; font-size: 16px;"><strong>Date:</strong> ${email.date}</div>
-                    ${email.urls && email.urls.length > 0 ? 
-                      `<div class="email-meta"><strong>URLs:</strong> ${email.urls.length} found</div>` : 
-                      ''}
-                  </li>`)
-                  .join("")}
-              </ul>
-            `;
+                
+                ${cacheNotice}
+                
+                <ul class="email-list" id="emailListContainer">
+                  ${emails
+                    .map((email, index) => `
+                    <li class="email-item" data-index="${index}">
+                      <div class="email-meta">
+                        <strong>From:</strong> ${email.from}
+                        <span class="${email.securityStatus === 'safe' ? 'safe-tag' : 'malicious-tag'}">
+                          ${email.securityStatus === 'safe' ? 'SAFE' : 'SUSPICIOUS'}
+                        </span>
+                      </div>
+                      <div class="email-meta">
+                        <strong>Subject:</strong> ${email.subject}
+                      </div>
+                      <div class="email-meta">
+                        <strong>Date:</strong> ${email.date}
+                      </div>
+                      ${email.urls && email.urls.length > 0 ? 
+                        `<div class="email-meta">
+                          <strong>URLs:</strong> ${email.urls.length} found
+                        </div>` : 
+                        ''}
+                    </li>`)
+                    .join("")}
+                </ul>
+              `;
             
             // Store email data in a variable accessible to our event handlers
             window.emailData = emails;
@@ -529,7 +611,6 @@ document.addEventListener("DOMContentLoaded", function () {
   loadTrustedDomains();
 },
 
-
     analysis: async () => {
       contentTitle.innerText = "Analysis";
       contentBody.innerHTML = "<p>Loading...</p>"; // Set loading state initially
@@ -564,7 +645,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
               // --- Construct the HTML content ---
               let htmlContent = `
-      <div style="background-color: #fcebef; padding: 40px; border-radius: 12px; font-family: 'Segoe UI', sans-serif; color: #222;">
+      <div style="background-color: #f0f4f8; padding: 40px; border-radius: 12px; font-family: 'Segoe UI', sans-serif; color: #222;">
         <div style="display: flex; justify-content: center; align-items: flex-start; flex-wrap: wrap; gap: 40px;">
 
           <div style="font-size: 16px; max-width: 420px; line-height: 1.8; background: #fff; padding: 24px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.06);">
