@@ -145,7 +145,7 @@ exports.getMaliciousDomains = (req, res) => {
 
 exports.getTips = (req, res) => {
   const tips = [
-    "Think before you click 2 — avoid links or attachments from unknown or unexpected sources.",
+    "Think before you click — avoid links or attachments from unknown or unexpected sources.",
     "Double-check the sender's email address, especially for messages that request sensitive information.",
     "Protect your accounts with two-factor authentication (2FA) wherever possible.",
     "Keep your operating system, browser, and antivirus software regularly updated to guard against known threats.",
