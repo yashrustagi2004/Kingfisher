@@ -160,7 +160,7 @@ exports.getTips = (req, res) => {
 
 exports.getAboutUs = (req, res) => {
   const about = [
-    "Kingfisher is committed to revolutionizing email security by leveraging the power of Natural Language Processing (NLP) and Machine Learning to combat phishing threats. As phishing attacks grow increasingly deceptive, traditional detection methods often fail to keep pace. Our intelligent system is designed to analyze email content deeply, uncover hidden patterns, and distinguish between legitimate and malicious messages with high precision. By minimizing false positives and enhancing detection accuracy, Kingfisher not only safeguards sensitive information but also empowers users to navigate the digital world with confidence. A secure inbox, after all, is the cornerstone of a secure digital life."
+    "Kingfisher 2 is committed to revolutionizing email security by leveraging the power of Natural Language Processing (NLP) and Machine Learning to combat phishing threats. As phishing attacks grow increasingly deceptive, traditional detection methods often fail to keep pace. Our intelligent system is designed to analyze email content deeply, uncover hidden patterns, and distinguish between legitimate and malicious messages with high precision. By minimizing false positives and enhancing detection accuracy, Kingfisher not only safeguards sensitive information but also empowers users to navigate the digital world with confidence. A secure inbox, after all, is the cornerstone of a secure digital life."
   ];
   return res.json({ about });
 };
