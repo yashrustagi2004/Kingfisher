@@ -54,8 +54,8 @@ npm start
 ```
 - #### Start NLP service
 ```
-cd ../nlp-service
-python app.py
+docker pull ishikasahu2504/phishing:latest
+docker run -p 5000:5000 --name nlp-container nlp-service
 ```
 - #### Run the build for the extension
 ```
